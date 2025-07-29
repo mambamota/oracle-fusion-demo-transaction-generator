@@ -1,7 +1,7 @@
 # Oracle Fusion Demo Transaction Generator Configuration
 
 oracle_fusion:
-  base_url: "https://your-instance.oraclecloud.com"
+  base_url: "https://iabbzv-dev1.fa.ocs.oraclecloud.com"
   api_version: "v1"
   timeout: 30
   
