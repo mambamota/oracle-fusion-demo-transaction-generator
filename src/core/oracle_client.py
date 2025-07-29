@@ -230,3 +230,62 @@ class OracleFusionClient:
         except Exception as e:
             self.logger.error(f"Creation error: {str(e)}")
             return {'success': False, 'error': str(e)} 
+
+    def get_bank_accounts(self) -> Dict[str, Any]:
+        """
+        Fetch real bank accounts from Oracle Fusion
+        
+        Returns:
+            Dict containing bank accounts response
+        """
+        try:
+            api_url = f"{self.base_url}/fscmRestApi/resources/11.13.18.05/cashBankAccounts"
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+            
+            response = self.session.get(api_url, headers=headers, timeout=self.config['oracle_fusion']['timeout'])
+            
+            if response.status_code == 200:
+                self.logger.info("Bank accounts fetched successfully")
+                return {'success': True, 'data': response.json()}
+            else:
+                self.logger.error(f"Failed to fetch bank accounts: {response.status_code} - {response.text}")
+                return {'success': False, 'error': response.text}
+                
+        except Exception as e:
+            self.logger.error(f"Error fetching bank accounts: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_bank_account_details(self, account_id: str) -> Dict[str, Any]:
+        """
+        Fetch specific bank account details
+        
+        Args:
+            account_id: Bank account ID
+            
+        Returns:
+            Dict containing bank account details
+        """
+        try:
+            api_url = f"{self.base_url}/fscmRestApi/resources/11.13.18.05/cashBankAccounts/{account_id}"
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+            
+            response = self.session.get(api_url, headers=headers, timeout=self.config['oracle_fusion']['timeout'])
+            
+            if response.status_code == 200:
+                self.logger.info(f"Bank account {account_id} details fetched successfully")
+                return {'success': True, 'data': response.json()}
+            else:
+                self.logger.error(f"Failed to fetch bank account {account_id}: {response.status_code} - {response.text}")
+                return {'success': False, 'error': response.text}
+                
+        except Exception as e:
+            self.logger.error(f"Error fetching bank account {account_id}: {str(e)}")
+            return {'success': False, 'error': str(e)} 

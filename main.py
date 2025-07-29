@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 from core.oracle_client import OracleFusionClient
 from generators.bai2_generator import BAI2Generator
 from generators.transaction_generators import TransactionGenerators
+from generators.real_bank_generator import RealBankGenerator
 from utils.excel_exporter import ExcelExporter
 
 # Page configuration
@@ -74,13 +75,14 @@ def main():
             st.sidebar.warning("Please enter all connection details")
     
     # Main content area
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Bank Statements", "AP Invoices", "AR Invoices", "GL Journals", "Export Data"
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "Bank Statements", "Real Bank Accounts", "AP Invoices", "AR Invoices", "GL Journals", "Export Data"
     ])
     
     # Initialize generators
     bai2_gen = BAI2Generator()
     transaction_gen = TransactionGenerators()
+    real_bank_gen = RealBankGenerator()
     excel_exporter = ExcelExporter()
     
     # Tab 1: Bank Statements
@@ -153,8 +155,105 @@ def main():
                 except Exception as e:
                     st.error(f"Error generating bank statement: {str(e)}")
     
-    # Tab 2: AP Invoices
+    # Tab 2: Real Bank Accounts
     with tab2:
+        st.header("🏦 Real Bank Account Generator")
+        st.markdown("Generate bank statements using real bank accounts from your Oracle Fusion instance")
+        
+        if st.button("Fetch Real Bank Accounts", type="primary"):
+            if base_url and username and password:
+                with st.spinner("Fetching real bank accounts from Oracle Fusion..."):
+                    try:
+                        # Create Oracle client
+                        client = OracleFusionClient(base_url, username, password)
+                        
+                        # Test connection first
+                        if client.authenticate():
+                            # Fetch real bank accounts
+                            result = client.get_bank_accounts()
+                            
+                            if result['success']:
+                                # Process real accounts
+                                real_accounts = real_bank_gen.process_real_bank_accounts(result['data'])
+                                
+                                if real_accounts:
+                                    st.success(f"✅ Fetched {len(real_accounts)} real bank accounts")
+                                    
+                                    # Display real accounts
+                                    st.subheader("Real Bank Accounts Found")
+                                    account_data = []
+                                    for account in real_accounts:
+                                        account_data.append({
+                                            'Account ID': account['account_id'],
+                                            'Account Name': account['account_name'],
+                                            'Account Number': account['account_number'],
+                                            'Bank Name': account['bank_name'],
+                                            'Currency': account['currency'],
+                                            'Status': 'Active' if account['is_active'] else 'Inactive'
+                                        })
+                                    
+                                    df = pd.DataFrame(account_data)
+                                    st.dataframe(df)
+                                    
+                                    # Generate transactions for real accounts
+                                    transactions_per_account = st.number_input(
+                                        "Transactions per Account",
+                                        min_value=5,
+                                        max_value=100,
+                                        value=config['transactions']['bank_statement']['default_count'],
+                                        key="real_transactions"
+                                    )
+                                    
+                                    if st.button("Generate BAI2 with Real Accounts", type="primary"):
+                                        with st.spinner("Generating BAI2 file with real accounts..."):
+                                            try:
+                                                # Generate BAI2 file with real accounts
+                                                bai2_file = real_bank_gen.create_bai2_with_real_accounts(
+                                                    real_accounts, transactions_per_account
+                                                )
+                                                
+                                                st.success(f"✅ BAI2 file generated: {bai2_file}")
+                                                
+                                                # Show preview
+                                                with open(bai2_file, 'r') as f:
+                                                    bai2_content = f.read()
+                                                
+                                                st.subheader("BAI2 File Preview")
+                                                st.code(bai2_content[:1000] + "..." if len(bai2_content) > 1000 else bai2_content)
+                                                
+                                                # Download button
+                                                st.download_button(
+                                                    label="Download BAI2 File",
+                                                    data=bai2_content,
+                                                    file_name=bai2_file,
+                                                    mime="text/plain"
+                                                )
+                                                
+                                                # Generate external transactions
+                                                external_transactions = real_bank_gen.create_external_transactions_for_real_accounts(
+                                                    real_accounts, transactions_per_account
+                                                )
+                                                
+                                                st.subheader("External Cash Transactions")
+                                                st.dataframe(pd.DataFrame(external_transactions))
+                                                
+                                            except Exception as e:
+                                                st.error(f"Error generating BAI2 with real accounts: {str(e)}")
+                                    
+                                else:
+                                    st.warning("No bank accounts found or error processing accounts")
+                            else:
+                                st.error(f"Failed to fetch bank accounts: {result.get('error', 'Unknown error')}")
+                        else:
+                            st.error("Failed to authenticate with Oracle Fusion")
+                            
+                    except Exception as e:
+                        st.error(f"Error connecting to Oracle Fusion: {str(e)}")
+            else:
+                st.warning("Please enter Oracle Fusion connection details in the sidebar")
+    
+    # Tab 3: AP Invoices
+    with tab3:
         st.header("📄 AP Invoice Generator")
         st.markdown("Generate Accounts Payable invoices")
         
@@ -191,8 +290,8 @@ def main():
                 except Exception as e:
                     st.error(f"Error generating AP invoices: {str(e)}")
     
-    # Tab 3: AR Invoices
-    with tab3:
+    # Tab 4: AR Invoices
+    with tab4:
         st.header("📄 AR Invoice Generator")
         st.markdown("Generate Accounts Receivable invoices")
         
@@ -229,8 +328,8 @@ def main():
                 except Exception as e:
                     st.error(f"Error generating AR invoices: {str(e)}")
     
-    # Tab 4: GL Journals
-    with tab4:
+    # Tab 5: GL Journals
+    with tab5:
         st.header("📊 GL Journal Generator")
         st.markdown("Generate General Ledger journal entries")
         
@@ -267,8 +366,8 @@ def main():
                 except Exception as e:
                     st.error(f"Error generating GL journals: {str(e)}")
     
-    # Tab 5: Export Data
-    with tab5:
+    # Tab 6: Export Data
+    with tab6:
         st.header("📤 Export Data")
         st.markdown("Export all generated data to various formats")
         
