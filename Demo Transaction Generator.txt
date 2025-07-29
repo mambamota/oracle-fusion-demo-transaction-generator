@@ -1,0 +1,30 @@
+Creation d’un outil de génération de transaction de demo pour Oracle Fusion
+-Bank statement BAI par compte de banque avec solde d’ouverture, de fermeture et nombre de transaction random pour arriver au solde de fermeture V1
+To load and import BAI2 version 2 bank statement file, you need to use the following ErpIntegrationService methods unlike how it is done for version 1 file.
+This technique can be followed for version 1 file as well as any Bank Statement format (BAI2, MT940 etc) if preferred.
+It's a two step process.
+•	First step is to upload the bank statement to UCM server.
+•	Second step is to execute the ESS job BankStatementProcessingForCloud to import the previously upload UCM file
+Refer document for further details.
+
+-Creation d’External transaction de cash management correspondant aux transactions de bank statement crées avec date et reference pour faire de l’auto reconciliation V1
+https://docs.oracle.com/en/cloud/saas/financials/24c/farfa/api-external-cash-transactions.html
+
+- Quelques AP invoices  V1.1
+	https://docs.oracle.com/en/cloud/saas/financials/25b/farfa/api-invoices.html
+-Quelques AR invoices ou AR Receipt V1.2
+	https://docs.oracle.com/en/cloud/saas/financials/24b/farfa/api-receivables-invoices.html
+-Quelques GL Journals V2
+	
+En fournissant un URL d'instance des credentials. Quelques paramètres et revu des transactions a générer avec options d’updates avant de pousser.
+ 
+ 
+ 
+ 
+ 
+Edit Bank Statement
+ 
+
+ 
+ 
+ 

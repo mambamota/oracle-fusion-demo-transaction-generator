@@ -1,0 +1,46 @@
+# Oracle Fusion Demo Transaction Generator Configuration
+
+oracle_fusion:
+  base_url: "https://your-instance.oraclecloud.com"
+  api_version: "v1"
+  timeout: 30
+  
+# Default transaction parameters
+transactions:
+  bank_statement:
+    default_count: 50
+    min_amount: 100.00
+    max_amount: 10000.00
+    date_range_days: 30
+    
+  ap_invoices:
+    default_count: 20
+    min_amount: 500.00
+    max_amount: 5000.00
+    
+  ar_invoices:
+    default_count: 15
+    min_amount: 1000.00
+    max_amount: 15000.00
+    
+  gl_journals:
+    default_count: 10
+    min_amount: 100.00
+    max_amount: 5000.00
+
+# BAI2 Bank Statement Format
+bai2_format:
+  record_types:
+    - "01"  # Group Header
+    - "02"  # Account Identifier
+    - "03"  # Transaction Detail
+    - "16"  # Group Trailer
+    - "49"  # Account Trailer
+    - "98"  # File Trailer
+    - "99"  # Group Trailer
+
+# File output settings
+output:
+  bai2_file: "generated_bank_statement.bai2"
+  excel_file: "demo_transactions.xlsx"
+  json_file: "transaction_data.json" 
