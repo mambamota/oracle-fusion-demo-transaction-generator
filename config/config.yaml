@@ -1,12 +1,16 @@
 # Oracle Fusion Demo Transaction Generator Configuration
 
 oracle_fusion:
-  base_url: "https://iabbzv-dev1.fa.ocs.oraclecloud.com"
-  api_version: "v1"
+  base_url: "https://iabhzv-test.fa.ocs.oraclecloud.com"  # Can be overridden in app
+  api_version: "11.13.18.05"
   timeout: 30
-  
+
 # Default transaction parameters
 transactions:
+  default_per_account: 10
+  default_opening_balance: 50000.0
+  default_closing_balance: 75000.0
+    
   bank_statement:
     default_count: 50
     min_amount: 100.00

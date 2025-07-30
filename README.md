@@ -1,44 +1,48 @@
 # Oracle Fusion Demo Transaction Generator
 
-A comprehensive tool for generating demo transactions for Oracle Fusion Financials testing and development.
+A comprehensive Streamlit web application for generating demo transactions for Oracle Fusion Financials testing and development. This tool combines real Oracle Fusion bank account data with realistic fake transactions to create comprehensive test datasets.
 
 ## 🚀 Features
 
 ### Core Components
-- **Bank Statement Generator (V1)**: Creates BAI2 format bank statements with opening/closing balances
-- **External Cash Transactions (V1)**: Generates cash management transactions for auto-reconciliation
-- **AP Invoices (V1.1)**: Creates Accounts Payable invoices with line items
-- **AR Invoices/Receipts (V1.2)**: Generates Accounts Receivable invoices and receipts
-- **GL Journals (V2)**: Creates General Ledger journal entries
+- **🏦 Real Bank Accounts**: Fetch and display real bank accounts from Oracle Fusion instance
+- **📊 BAI2 Bank Statements**: Generate BAI2 format bank statements with opening/closing balances
+- **💳 External Cash Transactions**: Generate cash management transactions for auto-reconciliation
+- **📄 AP Invoices**: Create Accounts Payable invoices with line items and supplier data
+- **📋 AR Invoices/Receipts**: Generate Accounts Receivable invoices and associated receipts
+- **📊 GL Journals**: Create balanced General Ledger journal entries
 
 ### Key Features
-- **Streamlit Web Interface**: User-friendly web application
-- **Excel Export**: Export generated data to Excel files for review
-- **Oracle Fusion API Integration**: Direct connection to Oracle Fusion instances
-- **Configurable Parameters**: Customize transaction counts, amounts, and date ranges
-- **Realistic Data**: Uses Faker library for realistic demo data
-- **BAI2 Format Support**: Proper BAI2 bank statement format generation
+- **🌐 Streamlit Web Interface**: User-friendly web application with tabbed interface
+- **🔗 Oracle Fusion API Integration**: Direct connection to Oracle Fusion instances
+- **📊 Multiple Export Formats**: CSV, JSON, and Properties files for Oracle Fusion import
+- **⚙️ Configurable Parameters**: Customize transaction counts, amounts, and date ranges
+- **🎭 Realistic Data**: Uses Faker library for realistic demo data
+- **🔐 Secure Authentication**: Username/password authentication for Oracle Fusion
+- **📱 Responsive Design**: Works on desktop and mobile devices
 
 ## 📁 Project Structure
 
 ```
 data tests generation/
+├── .github/                      # GitHub templates and workflows
+├── .streamlit/                   # Streamlit configuration
 ├── config/
 │   └── config.yaml              # Configuration file
-├── src/
-│   ├── core/
-│   │   ├── __init__.py
-│   │   └── oracle_client.py     # Oracle Fusion API client
-│   ├── generators/
-│   │   ├── __init__.py
-│   │   ├── bai2_generator.py   # BAI2 bank statement generator
-│   │   └── transaction_generators.py  # Transaction generators
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── excel_exporter.py    # Excel export utilities
-│   └── __init__.py
-├── main.py                      # Main Streamlit application
+├── demo_venv/                   # Virtual environment (ignored by Git)
+├── main_fixed.py                # Main Streamlit application
+├── bai2_generator.py            # BAI2 bank statement generator
+├── external_cash_generator.py   # External cash transactions generator
+├── ap_invoice_generator.py      # AP invoice generator
+├── ar_invoice_generator.py      # AR invoice generator
+├── gl_journal_generator.py      # GL journal generator
+├── validate_step2.py            # Step 2 validation script
+├── validate_step4.py            # Step 4 validation script
+├── validate_step5.py            # Step 5 validation script
 ├── requirements.txt             # Python dependencies
+├── run.bat                     # Windows batch file to run the app
+├── .gitignore                  # Git ignore rules
+├── LICENSE                     # License file
 └── README.md                   # This file
 ```
 
@@ -47,13 +51,14 @@ data tests generation/
 ### Prerequisites
 - Python 3.8 or higher
 - Oracle Fusion instance access
-- API credentials
+- API credentials (username/password)
 
 ### Setup Instructions
 
-1. **Clone or navigate to the project directory**
+1. **Clone the repository**
    ```bash
-   cd "data tests generation"
+   git clone https://github.com/mambamota/oracle-fusion-demo-transaction-generator.git
+   cd oracle-fusion-demo-transaction-generator
    ```
 
 2. **Create a virtual environment (recommended)**
@@ -74,7 +79,7 @@ data tests generation/
 
 4. **Configure the application**
    - Edit `config/config.yaml` with your Oracle Fusion instance details
-   - Update the base URL and other settings as needed
+   - Update the base URL and API version as needed
 
 ## 🚀 Usage
 
@@ -82,7 +87,7 @@ data tests generation/
 
 1. **Run the Streamlit app**
    ```bash
-   streamlit run main.py
+   streamlit run main_fixed.py
    ```
 
 2. **Open your browser**
@@ -91,42 +96,47 @@ data tests generation/
 
 ### Using the Application
 
-#### 1. Oracle Fusion Connection
-- Enter your Oracle Fusion instance URL
+#### 1. 🏦 Real Bank Accounts Tab
+- Enter your Oracle Fusion base URL
 - Provide username and password
-- Test the connection using the "Test Connection" button
+- Click "Fetch Bank Accounts" to retrieve real account data
+- View account details and download raw JSON data
+- Use this data as the foundation for generating transactions
 
-#### 2. Bank Statement Generation
-- Navigate to the "Bank Statements" tab
-- Configure:
-  - Number of bank accounts
-  - Transactions per account
-  - Minimum/maximum transaction amounts
+#### 2. 📊 BAI2 Bank Statements Tab
+- Configure opening and closing balances
+- Set the number of transactions to generate
 - Generate BAI2 format bank statements
-- Download the generated file
+- Download the generated BAI2 file
+- Export to Excel for review
 
-#### 3. AP Invoice Generation
-- Navigate to the "AP Invoices" tab
+#### 3. 💳 External Cash Transactions Tab
+- Set the number of transactions per account
+- Configure transaction amounts and date ranges
+- Generate external cash management transactions
+- Download CSV and JSON formats
+- Export to Excel for review
+
+#### 4. 📄 AP Invoices Tab
 - Set the number of invoices to generate
-- Generate Accounts Payable invoices
+- Configure line items per invoice
+- Generate Accounts Payable invoices with suppliers
+- Download CSV, JSON, and Properties files
 - Export to Excel for review
 
-#### 4. AR Invoice Generation
-- Navigate to the "AR Invoices" tab
-- Set the number of invoices to generate
-- Generate Accounts Receivable invoices
+#### 5. 📋 AR Invoices/Receipts Tab
+- Set the number of invoices and receipts
+- Configure line items and customer data
+- Generate Accounts Receivable invoices and receipts
+- Download CSV, JSON, and Properties files
 - Export to Excel for review
 
-#### 5. GL Journal Generation
-- Navigate to the "GL Journals" tab
-- Set the number of journal entries to generate
-- Generate General Ledger journal entries
+#### 6. 📊 GL Journals Tab
+- Set the number of journal entries per account
+- Configure lines per journal (minimum 2 for balance)
+- Generate balanced General Ledger journal entries
+- Download CSV, JSON, and Properties files
 - Export to Excel for review
-
-#### 6. Export All Data
-- Navigate to the "Export Data" tab
-- Generate all transaction types at once
-- Download comprehensive Excel file with all data
 
 ## ⚙️ Configuration
 
@@ -134,73 +144,90 @@ data tests generation/
 
 ```yaml
 oracle_fusion:
-  base_url: "https://your-instance.oraclecloud.com"
-  api_version: "v1"
+  base_url: "https://your-instance.fa.ocs.oraclecloud.com"
+  api_version: "11.13.18.05"
   timeout: 30
 
 transactions:
-  bank_statement:
-    default_count: 50
+  bai2_statement:
+    default_transactions: 50
     min_amount: 100.00
     max_amount: 10000.00
     date_range_days: 30
   
+  external_cash:
+    default_transactions_per_account: 10
+    min_amount: 500.00
+    max_amount: 5000.00
+  
   ap_invoices:
-    default_count: 20
+    default_invoices: 20
+    default_lines_per_invoice: 3
     min_amount: 500.00
     max_amount: 5000.00
   
   ar_invoices:
-    default_count: 15
+    default_invoices: 15
+    default_lines_per_invoice: 2
     min_amount: 1000.00
     max_amount: 15000.00
   
   gl_journals:
-    default_count: 10
+    default_journals_per_account: 2
+    default_lines_per_journal: 3
     min_amount: 100.00
     max_amount: 5000.00
 ```
 
 ## 📊 Generated Data Types
 
-### Bank Statements (BAI2 Format)
-- Multiple bank accounts
+### 🏦 Real Bank Accounts
+- Fetched from Oracle Fusion instance
+- Account names, numbers, and currencies
+- Business unit and ledger information
+- Real account data for authentic testing
+
+### 📊 BAI2 Bank Statements
+- Multiple bank accounts with real data
 - Opening and closing balances
 - Random transactions (credits/debits)
 - Proper BAI2 record formatting
 - Transaction references and descriptions
 
-### AP Invoices
-- Supplier information
-- Invoice dates and due dates
-- Line items with quantities and prices
-- Payment terms
-- Account assignments
-
-### AR Invoices
-- Customer information
-- Invoice details
-- Service line items
-- Payment terms
-- Account assignments
-
-### GL Journals
-- Journal entries with proper debits/credits
-- Account combinations
-- Balanced entries
-- Journal descriptions
-
-### External Cash Transactions
+### 💳 External Cash Transactions
 - Cash management transactions
 - Transaction types (receipt/payment/transfer)
 - Bank account references
 - Auto-reconciliation ready
+- CSV and JSON export formats
+
+### 📄 AP Invoices
+- Supplier information and addresses
+- Invoice dates and due dates
+- Line items with quantities and prices
+- Payment terms and account assignments
+- Multiple export formats (CSV, JSON, Properties)
+
+### 📋 AR Invoices/Receipts
+- Customer information and addresses
+- Invoice details and line items
+- Service descriptions and amounts
+- Payment terms and account assignments
+- Associated receipt generation
+
+### 📊 GL Journals
+- Balanced journal entries (debits = credits)
+- Multiple account types (Asset, Liability, Equity, Revenue, Expense)
+- Journal descriptions and line details
+- Business unit and ledger assignments
+- Multiple export formats
 
 ## 🔧 API Integration
 
-The application integrates with Oracle Fusion APIs:
+The application integrates with Oracle Fusion REST APIs:
 
-- **Bank Statement Processing**: Upload BAI2 files and process via ESS jobs
+- **Bank Account Fetching**: `fscmRestApi/resources/11.13.18.05/cashBankAccounts`
+- **BAI2 Bank Statement Processing**: Upload and process via ESS jobs
 - **External Cash Transactions**: Create cash management transactions
 - **AP Invoices**: Create Accounts Payable invoices
 - **AR Invoices**: Create Accounts Receivable invoices
@@ -209,42 +236,85 @@ The application integrates with Oracle Fusion APIs:
 ## 📁 Output Files
 
 Generated files include:
-- `generated_bank_statement.bai2`: BAI2 format bank statement
-- `ap_invoices_YYYYMMDD_HHMMSS.xlsx`: AP invoices Excel file
-- `ar_invoices_YYYYMMDD_HHMMSS.xlsx`: AR invoices Excel file
-- `gl_journals_YYYYMMDD_HHMMSS.xlsx`: GL journals Excel file
-- `demo_transactions_YYYYMMDD_HHMMSS.xlsx`: Complete transaction data
+- `bank_statement.bai2`: BAI2 format bank statement
+- `external_cash_transactions.csv`: External cash transactions
+- `ap_invoices_interface.csv`: AP invoice data
+- `ap_invoice_import.properties`: AP import configuration
+- `ar_invoices_interface.csv`: AR invoice data
+- `ar_invoice_import.properties`: AR import configuration
+- `gl_journals_interface.csv`: GL journal data
+- `gl_journal_import.properties`: GL import configuration
+- Various Excel files for review and analysis
 
 ## 🛡️ Security Notes
 
-- Store credentials securely
-- Use environment variables for sensitive data
-- Test in development environment first
-- Review generated data before production use
+- **Credentials**: Enter username/password in the web interface (not stored permanently)
+- **Base URL**: Configurable Oracle Fusion instance URL
+- **Data Privacy**: Sample data files are kept locally and not pushed to GitHub
+- **Testing**: Always test in development environment first
+- **Review**: Review generated data before production use
+
+## 🧪 Validation Scripts
+
+The project includes validation scripts for each component:
+- `validate_step2.py`: External Cash Transactions validation
+- `validate_step4.py`: AR Invoices validation
+- `validate_step5.py`: GL Journals validation
+
+Run these scripts to verify data generation:
+```bash
+python validate_step2.py
+python validate_step4.py
+python validate_step5.py
+```
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly using validation scripts
 5. Submit a pull request
 
 ## 📝 License
 
-This project is for internal use and testing purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
 For issues or questions:
-1. Check the configuration file
-2. Verify Oracle Fusion connection
-3. Review error logs
+1. Check the configuration file (`config/config.yaml`)
+2. Verify Oracle Fusion connection and credentials
+3. Review error logs in the Streamlit interface
 4. Test with smaller data sets first
+5. Run validation scripts to verify functionality
 
 ## 🔄 Version History
 
-- **V1**: Bank statement generation and external cash transactions
-- **V1.1**: AP invoice generation
-- **V1.2**: AR invoice and receipt generation
-- **V2**: GL journal generation and comprehensive Excel export 
+- **V1.0**: Initial release with bank statement generation
+- **V1.1**: Added external cash transactions
+- **V1.2**: Added AP invoice generation
+- **V1.3**: Added AR invoice and receipt generation
+- **V2.0**: Added GL journal generation and comprehensive validation
+- **V2.1**: Enhanced UI, improved error handling, and added multiple export formats
+
+## 🚀 Deployment
+
+### Local Development
+```bash
+streamlit run main_fixed.py
+```
+
+### Streamlit Cloud Deployment
+1. Push to GitHub repository
+2. Connect to Streamlit Cloud
+3. Deploy automatically from GitHub
+
+### Environment Variables
+- No environment variables required
+- All configuration through web interface
+- Credentials entered securely in the app
+
+---
+
+**Note**: This tool is designed for Oracle Fusion Financials testing and development. Always review generated data before using in production environments. 
