@@ -15,9 +15,8 @@ class BAI2Generator:
         }
     
     def generate_bai2_file(self, accounts: List[Dict[str, Any]], transactions_per_account: int = 10, 
-                          opening_balance: float = 50000.0, target_closing_balance: float = 75000.0,
                           pre_generated_transactions: List[Dict[str, Any]] = None) -> str:
-        """Generate BAI2 format bank statement with per-account balances"""
+        """Generate BAI2 format bank statement with real Oracle Fusion balances"""
         
         # Validate inputs
         if not accounts:
@@ -32,9 +31,15 @@ class BAI2Generator:
         # For each account
         for account in accounts:
             try:
-                # Use per-account balances if available, otherwise fall back to global defaults
-                account_opening_balance = account.get('opening_balance', opening_balance)
-                account_closing_balance = account.get('closing_balance', target_closing_balance)
+                # Use real Oracle Fusion balances from account data
+                account_opening_balance = account.get('opening_balance')
+                account_closing_balance = account.get('closing_balance')
+                
+                # Validate that we have real balance data
+                if account_opening_balance is None:
+                    raise ValueError(f"Missing opening balance for account {account.get('account_id', 'unknown')}")
+                if account_closing_balance is None:
+                    raise ValueError(f"Missing closing balance for account {account.get('account_id', 'unknown')}")
                 
                 # Account Identifier (Record Type 02)
                 account_header = self._create_account_header(account)
@@ -133,9 +138,13 @@ class BAI2Generator:
     
     def _generate_transactions_for_account(self, account: Dict[str, Any], count: int, 
                                         opening_balance: float, target_closing_balance: float) -> List[Dict[str, Any]]:
-        """Generate realistic transactions for an account"""
+        """Generate realistic transactions for an account using real Oracle Fusion balances"""
         transactions = []
         current_balance = opening_balance
+        
+        # Validate that we have real balance data
+        if opening_balance is None or target_closing_balance is None:
+            raise ValueError(f"Missing balance data for account {account.get('account_id', 'unknown')}")
         
         for i in range(count):
             # Calculate target amount to reach closing balance

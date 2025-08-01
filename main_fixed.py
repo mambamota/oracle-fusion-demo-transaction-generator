@@ -1745,12 +1745,22 @@ with tab1:
                 if 'generated_transactions' in st.session_state and st.session_state.generated_transactions:
                     # Use the realistic transactions from session state
                     st.info("📊 Using realistic transactions from previous generation...")
-                    bai2_content = bai2_gen.generate_bai2_file(
-                        accounts=st.session_state.real_accounts,
-                        transactions_per_account=st.session_state.transactions_per_account,
-                        pre_generated_transactions=st.session_state.generated_transactions
-                    )
-                    st.success("✅ Using realistic transactions from previous generation!")
+                    try:
+                        # Try with pre_generated_transactions parameter (newer version)
+                        bai2_content = bai2_gen.generate_bai2_file(
+                            accounts=st.session_state.real_accounts,
+                            transactions_per_account=st.session_state.transactions_per_account,
+                            pre_generated_transactions=st.session_state.generated_transactions
+                        )
+                        st.success("✅ Using realistic transactions from previous generation!")
+                    except TypeError:
+                        # Fallback for older version without pre_generated_transactions parameter
+                        st.warning("⚠️ Using older BAI2 generator version - generating transactions within BAI2")
+                        bai2_content = bai2_gen.generate_bai2_file(
+                            accounts=st.session_state.real_accounts,
+                            transactions_per_account=st.session_state.transactions_per_account
+                        )
+                        st.warning("⚠️ Using fallback transaction generation (update BAI2 generator for best results)")
                 else:
                     # Fallback to generating transactions within BAI2 generator
                     st.info("📊 Using fallback transaction generation...")
