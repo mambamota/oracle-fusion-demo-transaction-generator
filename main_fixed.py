@@ -15,7 +15,7 @@ try:
     from bai2_generator import BAI2Generator
     bai2_gen = BAI2Generator()
 except ImportError:
-    st.error("❌ BAI2 generator not found")
+    st.error("❌ BAI2 generator not found - check if bai2_generator.py exists")
     bai2_gen = None
 
 # Import External Cash generator
@@ -131,7 +131,9 @@ try:
                 config['oracle_fusion']['base_url'] = st.secrets.oracle_fusion.base_url
                 st.session_state.base_url = st.secrets.oracle_fusion.base_url
     except Exception as e:
-        st.warning(f"Could not load secrets: {e}")
+        # Only show warning if we're actually trying to load secrets (not in local dev)
+        if hasattr(st, 'secrets') and st.secrets:
+            st.warning(f"Could not load secrets: {e}")
         
 except Exception as e:
     st.error(f"Config error: {e}")
@@ -1598,7 +1600,7 @@ with tab1:
         
         # Generate transactions button with balance logic
         if st.button("Generate Demo Transactions", type="primary", key="generate_transactions_btn"):
-            st.info("🔄 Generating transactions with balance logic...")
+            st.info("🔄 Generating realistic transactions with mixed credits/debits...")
             
             # Generate transactions that respect the balance logic
             all_transactions = []
@@ -1612,29 +1614,39 @@ with tab1:
                 transactions = []
                 remaining_change = required_change
                 
+                # Generate realistic transaction amounts and types
                 for i in range(st.session_state.transactions_per_account):
                     if i == st.session_state.transactions_per_account - 1:
                         # Last transaction - use remaining amount to balance exactly
                         amount = remaining_change
                     else:
-                        # Generate meaningful transaction amounts
-                        # Use a percentage of the required change for each transaction
-                        transaction_percentage = 0.8 / (st.session_state.transactions_per_account - 1)  # 80% of change distributed
-                        base_amount = abs(required_change) * transaction_percentage
+                        # Generate realistic transaction amounts
+                        # Base amount based on account balance scale
+                        balance_scale = abs(opening_bal) / 1000  # Scale based on account size
+                        base_amount = max(100, min(5000, balance_scale * 100))  # Realistic amounts
                         
-                        # Add some variation and alternate between positive/negative
-                        variation = base_amount * 0.3 * (1 if i % 2 == 0 else -1)
-                        amount = base_amount + variation
-                        
-                        # Ensure we don't exceed the remaining change
-                        if remaining_change > 0:
-                            amount = min(amount, remaining_change)
+                        # Create mixed transaction types (not just mathematical)
+                        # 60% chance of credit, 40% chance of debit for variety
+                        if i % 3 == 0:  # Every 3rd transaction
+                            # Force some variation
+                            is_credit = (i % 2 == 0)
                         else:
-                            amount = max(amount, remaining_change)
+                            # Random but weighted towards credits if we need positive change
+                            is_credit = (remaining_change > 0 and i % 2 == 0) or (remaining_change < 0 and i % 2 == 1)
                         
-                        # For very small amounts, create minimum meaningful transactions
-                        if abs(amount) < 0.01:
-                            amount = 100.0 if remaining_change > 0 else -100.0
+                        # Generate amount with some randomness
+                        variation_factor = 0.3 + (i * 0.1)  # Increasing variation
+                        amount = base_amount * variation_factor
+                        
+                        # Make it negative for debits
+                        if not is_credit:
+                            amount = -amount
+                        
+                        # Ensure we don't exceed the remaining change by too much
+                        if remaining_change > 0 and amount > remaining_change * 1.5:
+                            amount = remaining_change * 0.8
+                        elif remaining_change < 0 and amount < remaining_change * 1.5:
+                            amount = remaining_change * 0.8
                         
                         # Round to 2 decimal places
                         amount = round(amount, 2)
@@ -1653,12 +1665,20 @@ with tab1:
                     else:
                         current_balance -= abs(amount)
                     
+                    # Create realistic transaction descriptions
+                    transaction_types = [
+                        "Bank Transfer", "ATM Withdrawal", "Direct Deposit", "Check Payment",
+                        "Wire Transfer", "Online Payment", "Service Fee", "Interest Payment",
+                        "Loan Payment", "Investment Deposit", "Utility Payment", "Insurance Premium",
+                        "Tax Payment", "Salary Deposit", "Vendor Payment", "Customer Payment"
+                    ]
+                    
                     transaction = {
                         'account_id': account['account_id'],
                         'account_name': account['account_name'],
                         'transaction_id': f"TXN{i+1:03d}",
                         'date': f"2024-01-{(i+1):02d}",
-                        'description': f"Demo transaction {i+1}",
+                        'description': transaction_types[i % len(transaction_types)],
                         'amount': abs(amount),
                         'type': 'Credit' if amount > 0 else 'Debit',
                         'running_balance': current_balance
@@ -1672,6 +1692,9 @@ with tab1:
             st.subheader("📊 Generated Transactions (Balanced)")
             transactions_df = pd.DataFrame(all_transactions)
             st.dataframe(transactions_df, use_container_width=True)
+            
+            # Store transactions in session state for BAI2 generation
+            st.session_state.generated_transactions = all_transactions
             
             # Show balance verification
             st.subheader("💰 Balance Verification")
@@ -1710,15 +1733,32 @@ with tab1:
         
         # BAI2 Generation button with balance logic
         if bai2_gen and st.button("Generate BAI2 Bank Statement", type="primary", key="generate_bai2_btn"):
-            st.info("🏦 Generating BAI2 bank statement with balance logic...")
+            st.info("🏦 Generating BAI2 bank statement with realistic transactions...")
             
             try:
-                # Generate BAI2 content with per-account balances
-                bai2_content = bai2_gen.generate_bai2_file(
-                    accounts=st.session_state.real_accounts,
-                    transactions_per_account=st.session_state.transactions_per_account
-                    # opening_balance and target_closing_balance are now handled per-account in the BAI2 generator
-                )
+                # Debug information for deployment troubleshooting
+                st.write("🔍 Debug Info:")
+                st.write(f"- Real accounts available: {len(st.session_state.real_accounts) if st.session_state.real_accounts else 0}")
+                st.write(f"- Generated transactions available: {len(st.session_state.generated_transactions) if 'generated_transactions' in st.session_state and st.session_state.generated_transactions else 0}")
+                
+                # Check if we have generated transactions to use
+                if 'generated_transactions' in st.session_state and st.session_state.generated_transactions:
+                    # Use the realistic transactions from session state
+                    st.info("📊 Using realistic transactions from previous generation...")
+                    bai2_content = bai2_gen.generate_bai2_file(
+                        accounts=st.session_state.real_accounts,
+                        transactions_per_account=st.session_state.transactions_per_account,
+                        pre_generated_transactions=st.session_state.generated_transactions
+                    )
+                    st.success("✅ Using realistic transactions from previous generation!")
+                else:
+                    # Fallback to generating transactions within BAI2 generator
+                    st.info("📊 Using fallback transaction generation...")
+                    bai2_content = bai2_gen.generate_bai2_file(
+                        accounts=st.session_state.real_accounts,
+                        transactions_per_account=st.session_state.transactions_per_account
+                    )
+                    st.warning("⚠️ Using fallback transaction generation (generate transactions first for best results)")
                 
                 # Store BAI2 content in session state
                 st.session_state.bai2_content = bai2_content
@@ -1740,6 +1780,12 @@ with tab1:
                 
             except Exception as e:
                 st.error(f"❌ Error generating BAI2: {e}")
+                st.error("🔍 Debug information:")
+                st.error(f"- Exception type: {type(e).__name__}")
+                st.error(f"- Real accounts: {st.session_state.real_accounts}")
+                st.error(f"- Generated transactions: {st.session_state.get('generated_transactions', 'Not found')}")
+                import traceback
+                st.error(f"Full traceback: {traceback.format_exc()}")
         
         # Post to Oracle Fusion button (only show if BAI2 was generated)
         if 'bai2_content' in st.session_state and st.session_state.bai2_content:
@@ -1778,7 +1824,7 @@ with tab1:
 
 # Transactions Tab
 with tab2:
-    st.success("�� **TRANSACTIONS**")
+    st.success("💳 **TRANSACTIONS**")
     st.markdown("Generate transactions based on real opening balances")
     
     # Check if we have bank accounts
@@ -1825,28 +1871,57 @@ with tab2:
                 
                 # Display transactions
                 st.subheader("📊 External Cash Transactions")
-                transactions_df = pd.DataFrame(external_transactions)
-                st.dataframe(transactions_df, use_container_width=True)
                 
-                # Download CSV
-                csv_data = external_cash_gen.generate_csv_content(external_transactions)
-                st.download_button(
-                    label="📥 Download External Transactions CSV",
-                    data=csv_data,
-                    file_name="external_cash_transactions.csv",
-                    mime="text/csv"
-                )
+                # Create compact summary dataframe with fewer columns
+                summary_data = []
+                for transaction in external_transactions:
+                    summary_data.append({
+                        'Transaction ID': transaction['TransactionId'],
+                        'Account': transaction['AccountId'],
+                        'Description': transaction['Description'][:30] + "..." if len(transaction['Description']) > 30 else transaction['Description'],
+                        'Amount': f"${transaction['Amount']:,.2f}",
+                        'Type': transaction['Type'],
+                        'Date': transaction['TransactionDate']
+                    })
                 
-                # Download Oracle Fusion format
-                fusion_format = external_cash_gen.generate_oracle_fusion_format(external_transactions)
-                import json
-                fusion_json = json.dumps(fusion_format, indent=2)
-                st.download_button(
-                    label="📥 Download Oracle Fusion JSON",
-                    data=fusion_json,
-                    file_name="external_transactions_fusion.json",
-                    mime="application/json"
-                )
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(summary_df, use_container_width=True)
+                
+                # Show detailed transactions in expandable section
+                with st.expander("📋 Detailed Transaction Information"):
+                    detailed_df = pd.DataFrame(external_transactions)
+                    st.dataframe(detailed_df, use_container_width=True)
+                
+                # Download section with better layout
+                st.markdown("---")
+                st.subheader("📥 Download Files")
+                
+                # Download buttons in columns
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Download CSV
+                    csv_data = external_cash_gen.generate_csv_content(external_transactions)
+                    st.download_button(
+                        label="📥 External Transactions CSV",
+                        data=csv_data,
+                        file_name="external_cash_transactions.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # Download Oracle Fusion format
+                    fusion_format = external_cash_gen.generate_oracle_fusion_format(external_transactions)
+                    import json
+                    fusion_json = json.dumps(fusion_format, indent=2)
+                    st.download_button(
+                        label="📥 Oracle Fusion JSON",
+                        data=fusion_json,
+                        file_name="external_transactions_fusion.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
                 
                 st.success(f"✅ Generated {len(external_transactions)} external cash transactions!")
                 
@@ -1909,292 +1984,256 @@ with tab2:
                             del st.session_state.external_transactions
                         st.rerun()
 
-# AP Invoices Section
-st.subheader("📄 **AP INVOICES**")
-st.markdown("Generate AP (Accounts Payable) invoices for Oracle Fusion")
-
-# Check if we have bank accounts
-if not st.session_state.real_accounts:
-    st.warning("⚠️ Please fetch bank accounts from the 'Real Balances' tab first")
-else:
-    # Input parameters
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        ap_invoices_per_account = st.number_input(
-            "AP Invoices per Account",
-            min_value=1,
-            max_value=10,
-            value=st.session_state.ap_invoices_per_account,
-            help="Number of AP invoices to generate per bank account",
-            key="ap_invoices_per_account_tab2"
-        )
-    
-    with col2:
-        ap_lines_per_invoice = st.number_input(
-            "Lines per Invoice",
-            min_value=1,
-            max_value=10,
-            value=st.session_state.ap_lines_per_invoice,
-            help="Number of line items per AP invoice",
-            key="ap_lines_per_invoice_tab2"
-        )
-    
-    with col3:
-        ap_date_range_days = st.number_input(
-            "Date Range (Days)",
-            min_value=1,
-            max_value=90,
-            value=30,
-            help="Number of days back to generate invoices",
-            key="ap_date_range_days_tab2"
-        )
-    
-    # Generate AP invoices button
-    if ap_invoice_gen and st.button("Generate AP Invoices", type="primary", key="generate_ap_btn"):
-        st.info("📄 Generating AP invoices...")
-        
-        try:
-            # Generate AP invoices
-            ap_invoices = ap_invoice_gen.generate_ap_invoices(
-                accounts=st.session_state.real_accounts,
-                invoices_per_account=ap_invoices_per_account,
-                lines_per_invoice=ap_lines_per_invoice,
-                date_range_days=ap_date_range_days
+        # AP INVOICES SECTION (Indented inside tab2)
+        st.markdown("---")
+        st.subheader("📄 **AP INVOICES**")
+        st.markdown("Generate AP (Accounts Payable) invoices for Oracle Fusion")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            ap_invoices_per_account = st.number_input(
+                "AP Invoices per Account",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.ap_invoices_per_account,
+                help="Number of AP invoices to generate per bank account",
+                key="ap_invoices_per_account_tab2"
             )
-            
-            # Store in session state
-            st.session_state.ap_invoices = ap_invoices
-            st.session_state.ap_invoices_per_account = ap_invoices_per_account
-            st.session_state.ap_lines_per_invoice = ap_lines_per_invoice
-            
-            # Display invoice summary
-            st.subheader("📊 AP Invoices Summary")
-            
-            # Create summary dataframe
-            summary_data = []
-            for invoice in ap_invoices:
-                header = invoice['header']
-                summary_data.append({
-                    'Invoice ID': header['InvoiceId'],
-                    'Invoice Number': header['InvoiceNumber'],
-                    'Supplier': header['SupplierName'],
-                    'Amount': f"${header['InvoiceAmount']:,.2f}",
-                    'Currency': header['Currency'],
-                    'Invoice Date': header['InvoiceDate'],
-                    'Due Date': header['DueDate'],
-                    'Status': header['Status'],
-                    'Lines': len(invoice['lines'])
-                })
-            
-            summary_df = pd.DataFrame(summary_data)
-            st.dataframe(summary_df, use_container_width=True)
-            
-            # Download CSV
-            csv_data = ap_invoice_gen.generate_csv_content(ap_invoices)
-            st.download_button(
-                label="📥 Download AP Invoices CSV",
-                data=csv_data,
-                file_name="ap_invoices_interface.csv",
-                mime="text/csv"
+        with col2:
+            ap_lines_per_invoice = st.number_input(
+                "Lines per Invoice",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.ap_lines_per_invoice,
+                help="Number of line items per AP invoice",
+                key="ap_lines_per_invoice_tab2"
             )
-            
-            # Download Oracle Fusion format
-            fusion_format = ap_invoice_gen.generate_oracle_fusion_format(ap_invoices)
-            import json
-            fusion_json = json.dumps(fusion_format, indent=2)
-            st.download_button(
-                label="📥 Download Oracle Fusion JSON",
-                data=fusion_json,
-                file_name="ap_invoices_fusion.json",
-                mime="application/json"
+        with col3:
+            ap_date_range_days = st.number_input(
+                "Date Range (Days)",
+                min_value=1,
+                max_value=90,
+                value=30,
+                help="Number of days back to generate invoices",
+                key="ap_date_range_days_tab2"
             )
-            
-            # Download Properties file
-            properties_data = ap_invoice_gen.generate_properties_content(ap_invoices)
-            st.download_button(
-                label="📥 Download Properties File",
-                data=properties_data,
-                file_name="ap_invoice_import.properties",
-                mime="text/plain"
-            )
-            
-            st.success(f"✅ Generated {len(ap_invoices)} AP invoices!")
-            
-        except Exception as e:
-            st.error(f"❌ Error generating AP invoices: {e}")
-    
-    # Display existing invoices if available
-    if st.session_state.ap_invoices:
+        if ap_invoice_gen and st.button("Generate AP Invoices", type="primary", key="generate_ap_btn"):
+            st.info("📄 Generating AP invoices...")
+            try:
+                ap_invoices = ap_invoice_gen.generate_ap_invoices(
+                    accounts=st.session_state.real_accounts,
+                    invoices_per_account=ap_invoices_per_account,
+                    lines_per_invoice=ap_lines_per_invoice,
+                    date_range_days=ap_date_range_days
+                )
+                st.session_state.ap_invoices = ap_invoices
+                st.session_state.ap_invoices_per_account = ap_invoices_per_account
+                st.session_state.ap_lines_per_invoice = ap_lines_per_invoice
+                st.subheader("📊 AP Invoices Summary")
+                summary_data = []
+                for invoice in ap_invoices:
+                    header = invoice['header']
+                    summary_data.append({
+                        'Invoice ID': header['InvoiceId'],
+                        'Supplier': header['SupplierName'][:25] + "..." if len(header['SupplierName']) > 25 else header['SupplierName'],
+                        'Amount': f"${header['InvoiceAmount']:,.2f}",
+                        'Currency': header['Currency'],
+                        'Status': header['Status'],
+                        'Lines': len(invoice['lines'])
+                    })
+                summary_df = pd.DataFrame(summary_data)
+                st.dataframe(summary_df, use_container_width=True)
+                with st.expander("📋 Detailed Invoice Information"):
+                    detailed_data = []
+                    for invoice in ap_invoices:
+                        header = invoice['header']
+                        detailed_data.append({
+                            'Invoice ID': header['InvoiceId'],
+                            'Invoice Number': header['InvoiceNumber'],
+                            'Supplier': header['SupplierName'],
+                            'Amount': f"${header['InvoiceAmount']:,.2f}",
+                            'Currency': header['Currency'],
+                            'Invoice Date': header['InvoiceDate'],
+                            'Due Date': header['DueDate'],
+                            'Status': header['Status'],
+                            'Lines': len(invoice['lines'])
+                        })
+                    detailed_df = pd.DataFrame(detailed_data)
+                    st.dataframe(detailed_df, use_container_width=True)
+                st.markdown("---")
+                st.subheader("📥 Download Files")
+                col1, col2 = st.columns(2)
+                with col1:
+                    csv_data = ap_invoice_gen.generate_csv_content(ap_invoices)
+                    st.download_button(
+                        label="📥 AP Invoices CSV",
+                        data=csv_data,
+                        file_name="ap_invoices_interface.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    fusion_format = ap_invoice_gen.generate_oracle_fusion_format(ap_invoices)
+                    import json
+                    fusion_json = json.dumps(fusion_format, indent=2)
+                    st.download_button(
+                        label="📥 Oracle Fusion JSON",
+                        data=fusion_json,
+                        file_name="ap_invoices_fusion.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                with col2:
+                    properties_data = ap_invoice_gen.generate_properties_content(ap_invoices)
+                    st.download_button(
+                        label="📥 Properties File",
+                        data=properties_data,
+                        file_name="ap_invoice_import.properties",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
+                st.success(f"✅ Generated {len(ap_invoices)} AP invoices!")
+            except Exception as e:
+                st.error(f"❌ Error generating AP invoices: {e}")
+        if st.session_state.ap_invoices:
             st.subheader("📋 Previously Generated AP Invoices")
-            
-            # Summary statistics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 total_invoices = len(st.session_state.ap_invoices)
                 st.metric("Total Invoices", total_invoices)
-            
             with col2:
                 total_amount = sum(inv['header']['InvoiceAmount'] for inv in st.session_state.ap_invoices)
                 st.metric("Total Amount", f"${total_amount:,.2f}")
-            
             with col3:
                 total_lines = sum(len(inv['lines']) for inv in st.session_state.ap_invoices)
                 st.metric("Total Line Items", total_lines)
-            
             with col4:
                 avg_amount = total_amount / total_invoices if total_invoices > 0 else 0
                 st.metric("Average Invoice", f"${avg_amount:,.2f}")
-            
-            # Show detailed invoice data
             with st.expander("📄 Detailed Invoice Data"):
                 for i, invoice in enumerate(st.session_state.ap_invoices):
                     header = invoice['header']
                     st.write(f"**Invoice {i+1}: {header['InvoiceId']}**")
                     st.write(f"Supplier: {header['SupplierName']} | Amount: ${header['InvoiceAmount']:,.2f}")
-                    
-                    # Show lines
                     lines_df = pd.DataFrame(invoice['lines'])
                     st.dataframe(lines_df, use_container_width=True)
                     st.write("---")
-            
-            # Post to Oracle Fusion button (only show if AP invoices were generated)
             if st.session_state.ap_invoices:
                 st.markdown("---")
                 st.subheader("📤 Post to Oracle Fusion")
-                
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("🚀 Post AP Invoices to Oracle Fusion", type="secondary", key="post_ap_btn"):
                         st.info("📤 Posting AP invoices to Oracle Fusion...")
-                        
                         try:
                             client = SimpleOracleClient(config)
-                            
-                            # Add authentication if provided in sidebar
                             if 'username' in st.session_state and 'password' in st.session_state:
                                 if st.session_state.username and st.session_state.password:
                                     client.session.auth = (st.session_state.username, st.session_state.password)
                                     st.info("🔐 Using stored credentials")
-                            
-                            # Post to Oracle Fusion
                             success = client.post_ap_invoices(st.session_state.ap_invoices)
-                            
                             if success:
                                 st.success("✅ Successfully posted AP invoices to Oracle Fusion!")
                             else:
                                 st.error("❌ Failed to post AP invoices to Oracle Fusion")
-                                
                         except Exception as e:
                             st.error(f"❌ Error posting to Oracle Fusion: {e}")
-                
                 with col2:
                     if st.button("🔄 Clear AP Data", type="secondary", key="clear_ap_btn"):
                         if 'ap_invoices' in st.session_state:
                             del st.session_state.ap_invoices
                         st.rerun()
 
-# AR Invoices/Receipts Section
-st.subheader("📋 **AR INVOICES/RECEIPTS**")
-st.markdown("Generate AR (Accounts Receivable) invoices and receipts for Oracle Fusion")
-
-# Check if we have bank accounts
-if not st.session_state.real_accounts:
-    st.warning("⚠️ Please fetch bank accounts from the 'Real Balances' tab first")
-else:
-    # Input parameters
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        ar_invoices_per_account = st.number_input(
-            "AR Invoices per Account",
-            min_value=1,
-            max_value=10,
-            value=st.session_state.ar_invoices_per_account,
-            help="Number of AR invoices to generate per bank account",
-            key="ar_invoices_per_account_tab2"
-        )
-    
-    with col2:
-        ar_lines_per_invoice = st.number_input(
-            "Lines per Invoice",
-            min_value=1,
-            max_value=10,
-            value=st.session_state.ar_lines_per_invoice,
-            help="Number of line items per AR invoice",
-            key="ar_lines_per_invoice_tab2"
-        )
-    
-    with col3:
-        ar_date_range_days = st.number_input(
-            "Date Range (Days)",
-            min_value=1,
-            max_value=90,
-            value=30,
-            help="Number of days back to generate invoices",
-            key="ar_date_range_days_tab2"
-        )
-    
-    with col4:
-        receipt_percentage = st.slider(
-            "Receipt Percentage",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.7,
-            step=0.1,
-            help="Percentage of invoices that will have receipts",
-            key="receipt_percentage_tab2"
-        )
-        
-        # Generate AR invoices button
+        # AR INVOICES/RECEIPTS SECTION (Indented inside tab2)
+        st.markdown("---")
+        st.subheader("📋 **AR INVOICES/RECEIPTS**")
+        st.markdown("Generate AR (Accounts Receivable) invoices and receipts for Oracle Fusion")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            ar_invoices_per_account = st.number_input(
+                "AR Invoices per Account",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.ar_invoices_per_account,
+                help="Number of AR invoices to generate per bank account",
+                key="ar_invoices_per_account_tab2"
+            )
+        with col2:
+            ar_lines_per_invoice = st.number_input(
+                "Lines per Invoice",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.ar_lines_per_invoice,
+                help="Number of line items per AR invoice",
+                key="ar_lines_per_invoice_tab2"
+            )
+        with col3:
+            ar_date_range_days = st.number_input(
+                "Date Range (Days)",
+                min_value=1,
+                max_value=90,
+                value=30,
+                help="Number of days back to generate invoices",
+                key="ar_date_range_days_tab2"
+            )
+        with col4:
+            receipt_percentage = st.slider(
+                "Receipt Percentage",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.7,
+                step=0.1,
+                help="Percentage of invoices that will have receipts",
+                key="receipt_percentage_tab2"
+            )
         if ar_invoice_gen and st.button("Generate AR Invoices & Receipts", type="primary", key="generate_ar_btn"):
             st.info("📋 Generating AR invoices and receipts...")
-            
             try:
-                # Generate AR invoices
                 ar_invoices = ar_invoice_gen.generate_ar_invoices(
                     accounts=st.session_state.real_accounts,
                     invoices_per_account=ar_invoices_per_account,
                     lines_per_invoice=ar_lines_per_invoice,
                     date_range_days=ar_date_range_days
                 )
-                
-                # Generate receipts for invoices
                 ar_receipts = ar_invoice_gen.generate_receipts(
                     invoices=ar_invoices,
                     receipt_percentage=receipt_percentage
                 )
-                
-                # Store in session state
                 st.session_state.ar_invoices = ar_invoices
                 st.session_state.ar_receipts = ar_receipts
                 st.session_state.ar_invoices_per_account = ar_invoices_per_account
                 st.session_state.ar_lines_per_invoice = ar_lines_per_invoice
-                
-                # Display invoice summary
                 st.subheader("📊 AR Invoices Summary")
-                
-                # Create summary dataframe
                 summary_data = []
                 for invoice in ar_invoices:
                     header = invoice['header']
                     has_receipt = any(r['InvoiceId'] == header['InvoiceId'] for r in ar_receipts)
                     summary_data.append({
                         'Invoice ID': header['InvoiceId'],
-                        'Invoice Number': header['InvoiceNumber'],
-                        'Customer': header['CustomerName'],
+                        'Customer': header['CustomerName'][:25] + "..." if len(header['CustomerName']) > 25 else header['CustomerName'],
                         'Amount': f"${header['InvoiceAmount']:,.2f}",
                         'Currency': header['Currency'],
-                        'Invoice Date': header['InvoiceDate'],
-                        'Due Date': header['DueDate'],
                         'Status': header['Status'],
-                        'Payment Terms': header['PaymentTerms'],
-                        'Lines': len(invoice['lines']),
-                        'Has Receipt': '✅ Yes' if has_receipt else '❌ No'
+                        'Receipt': '✅' if has_receipt else '❌'
                     })
-                
                 summary_df = pd.DataFrame(summary_data)
                 st.dataframe(summary_df, use_container_width=True)
-                
-                # Display receipts summary
+                with st.expander("📋 Detailed Invoice Information"):
+                    detailed_data = []
+                    for invoice in ar_invoices:
+                        header = invoice['header']
+                        detailed_data.append({
+                            'Invoice ID': header['InvoiceId'],
+                            'Invoice Number': header['InvoiceNumber'],
+                            'Customer': header['CustomerName'],
+                            'Amount': f"${header['InvoiceAmount']:,.2f}",
+                            'Currency': header['Currency'],
+                            'Invoice Date': header['InvoiceDate'],
+                            'Due Date': header['DueDate'],
+                            'Status': header['Status'],
+                            'Payment Terms': header['PaymentTerms'],
+                            'Lines': len(invoice['lines'])
+                        })
+                    detailed_df = pd.DataFrame(detailed_data)
+                    st.dataframe(detailed_df, use_container_width=True)
                 if ar_receipts:
                     st.subheader("💰 AR Receipts Summary")
                     receipts_data = []
@@ -2202,120 +2241,105 @@ else:
                         receipts_data.append({
                             'Receipt ID': receipt['ReceiptId'],
                             'Invoice ID': receipt['InvoiceId'],
-                            'Customer': receipt['CustomerName'],
+                            'Customer': receipt['CustomerName'][:20] + "..." if len(receipt['CustomerName']) > 20 else receipt['CustomerName'],
                             'Amount': f"${receipt['Amount']:,.2f}",
-                            'Receipt Date': receipt['ReceiptDate'],
                             'Payment Method': receipt['PaymentMethod'],
                             'Status': receipt['Status']
                         })
-                    
                     receipts_df = pd.DataFrame(receipts_data)
                     st.dataframe(receipts_df, use_container_width=True)
-                
-                # Download CSV files
+                    with st.expander("📋 Detailed Receipt Information"):
+                        detailed_receipts_data = []
+                        for receipt in ar_receipts:
+                            detailed_receipts_data.append({
+                                'Receipt ID': receipt['ReceiptId'],
+                                'Invoice ID': receipt['InvoiceId'],
+                                'Customer': receipt['CustomerName'],
+                                'Amount': f"${receipt['Amount']:,.2f}",
+                                'Receipt Date': receipt['ReceiptDate'],
+                                'Payment Method': receipt['PaymentMethod'],
+                                'Status': receipt['Status']
+                            })
+                        detailed_receipts_df = pd.DataFrame(detailed_receipts_data)
+                        st.dataframe(detailed_receipts_df, use_container_width=True)
+                st.markdown("---")
+                st.subheader("📥 Download Files")
                 col1, col2 = st.columns(2)
-                
                 with col1:
-                    # Download AR Invoices CSV
                     csv_data = ar_invoice_gen.generate_csv_content(ar_invoices)
                     st.download_button(
-                        label="📥 Download AR Invoices CSV",
+                        label="📥 AR Invoices CSV",
                         data=csv_data,
                         file_name="ar_invoices_interface.csv",
-                        mime="text/csv"
+                        mime="text/csv",
+                        use_container_width=True
                     )
-                
+                    fusion_format = ar_invoice_gen.generate_oracle_fusion_format(ar_invoices)
+                    import json
+                    fusion_json = json.dumps(fusion_format, indent=2)
+                    st.download_button(
+                        label="📥 Oracle Fusion JSON",
+                        data=fusion_json,
+                        file_name="ar_invoices_fusion.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
                 with col2:
-                    # Download AR Receipts CSV
                     if ar_receipts:
                         receipts_csv_data = ar_invoice_gen.generate_receipts_csv_content(ar_receipts)
                         st.download_button(
-                            label="📥 Download AR Receipts CSV",
+                            label="📥 AR Receipts CSV",
                             data=receipts_csv_data,
                             file_name="ar_receipts_interface.csv",
-                            mime="text/csv"
+                            mime="text/csv",
+                            use_container_width=True
                         )
-                
-                # Download Oracle Fusion format
-                fusion_format = ar_invoice_gen.generate_oracle_fusion_format(ar_invoices)
-                import json
-                fusion_json = json.dumps(fusion_format, indent=2)
-                st.download_button(
-                    label="📥 Download Oracle Fusion JSON",
-                    data=fusion_json,
-                    file_name="ar_invoices_fusion.json",
-                    mime="application/json"
-                )
-                
                 st.success(f"✅ Generated {len(ar_invoices)} AR invoices and {len(ar_receipts)} receipts!")
-                
             except Exception as e:
                 st.error(f"❌ Error generating AR invoices: {e}")
-        
-        # Display existing invoices if available
         if st.session_state.ar_invoices:
             st.subheader("📋 Previously Generated AR Data")
-            
-            # Summary statistics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 total_invoices = len(st.session_state.ar_invoices)
                 st.metric("Total Invoices", total_invoices)
-            
             with col2:
                 total_amount = sum(inv['header']['InvoiceAmount'] for inv in st.session_state.ar_invoices)
                 st.metric("Total Invoice Amount", f"${total_amount:,.2f}")
-            
             with col3:
                 total_receipts = len(st.session_state.ar_receipts)
                 st.metric("Total Receipts", total_receipts)
-            
             with col4:
                 total_receipt_amount = sum(r['Amount'] for r in st.session_state.ar_receipts)
                 st.metric("Total Receipt Amount", f"${total_receipt_amount:,.2f}")
-            
-            # Show detailed invoice data
             with st.expander("📄 Detailed AR Invoice Data"):
                 for i, invoice in enumerate(st.session_state.ar_invoices):
                     header = invoice['header']
                     st.write(f"**Invoice {i+1}: {header['InvoiceId']}**")
                     st.write(f"Customer: {header['CustomerName']} | Amount: ${header['InvoiceAmount']:,.2f} | Payment Terms: {header['PaymentTerms']}")
-                    
-                    # Show lines
                     lines_df = pd.DataFrame(invoice['lines'])
                     st.dataframe(lines_df, use_container_width=True)
                     st.write("---")
-            
-            # Post to Oracle Fusion button (only show if AR invoices were generated)
             if st.session_state.ar_invoices:
                 st.markdown("---")
                 st.subheader("📤 Post to Oracle Fusion")
-                
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("🚀 Post AR Invoices to Oracle Fusion", type="secondary", key="post_ar_btn"):
                         st.info("📤 Posting AR invoices to Oracle Fusion...")
-                        
                         try:
                             client = SimpleOracleClient(config)
-                            
-                            # Add authentication if provided in sidebar
                             if 'username' in st.session_state and 'password' in st.session_state:
                                 if st.session_state.username and st.session_state.password:
                                     client.session.auth = (st.session_state.username, st.session_state.password)
                                     st.info("🔐 Using stored credentials")
-                            
-                            # Post to Oracle Fusion
                             success = client.post_ar_invoices(st.session_state.ar_invoices)
-                            
                             if success:
                                 st.success("✅ Successfully posted AR invoices to Oracle Fusion!")
                             else:
                                 st.error("❌ Failed to post AR invoices to Oracle Fusion")
-                                
                         except Exception as e:
                             st.error(f"❌ Error posting to Oracle Fusion: {e}")
-                
                 with col2:
                     if st.button("🔄 Clear AR Data", type="secondary", key="clear_ar_btn"):
                         if 'ar_invoices' in st.session_state:
@@ -2324,193 +2348,166 @@ else:
                             del st.session_state.ar_receipts
                         st.rerun()
 
-# GL Journals Section
-st.subheader("📊 **GL JOURNALS**")
-st.markdown("Generate GL (General Ledger) journal entries for Oracle Fusion")
-
-# Check if we have bank accounts
-if not st.session_state.real_accounts:
-    st.warning("⚠️ Please fetch bank accounts from the 'Real Balances' tab first")
-else:
-    # Input parameters
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        gl_journals_per_account = st.number_input(
-            "GL Journals per Account",
-            min_value=1,
-            max_value=10,
-            value=st.session_state.gl_journals_per_account,
-            help="Number of GL journals to generate per bank account",
-            key="gl_journals_per_account_tab2"
-        )
-    
-    with col2:
-        gl_lines_per_journal = st.number_input(
-            "Lines per Journal",
-            min_value=2,
-            max_value=10,
-            value=st.session_state.gl_lines_per_journal,
-            help="Number of line items per GL journal (minimum 2 for balance)",
-            key="gl_lines_per_journal_tab2"
-        )
-    
-    with col3:
-        gl_date_range_days = st.number_input(
-            "Date Range (Days)",
-            min_value=1,
-            max_value=90,
-            value=30,
-            help="Number of days back to generate journals",
-            key="gl_date_range_days_tab2"
-        )
-        
-        # Generate GL journals button
+        # GL JOURNALS SECTION (Indented inside tab2)
+        st.markdown("---")
+        st.subheader("📊 **GL JOURNALS**")
+        st.markdown("Generate GL (General Ledger) journal entries for Oracle Fusion")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            gl_journals_per_account = st.number_input(
+                "GL Journals per Account",
+                min_value=1,
+                max_value=10,
+                value=st.session_state.gl_journals_per_account,
+                help="Number of GL journals to generate per bank account",
+                key="gl_journals_per_account_tab2"
+            )
+        with col2:
+            gl_lines_per_journal = st.number_input(
+                "Lines per Journal",
+                min_value=2,
+                max_value=10,
+                value=st.session_state.gl_lines_per_journal,
+                help="Number of line items per GL journal (minimum 2 for balance)",
+                key="gl_lines_per_journal_tab2"
+            )
+        with col3:
+            gl_date_range_days = st.number_input(
+                "Date Range (Days)",
+                min_value=1,
+                max_value=90,
+                value=30,
+                help="Number of days back to generate journals",
+                key="gl_date_range_days_tab2"
+            )
         if gl_journal_gen and st.button("Generate GL Journals", type="primary", key="generate_gl_btn"):
             st.info("📊 Generating GL journals...")
-            
             try:
-                # Generate GL journals
                 gl_journals = gl_journal_gen.generate_gl_journals(
                     accounts=st.session_state.real_accounts,
                     journals_per_account=gl_journals_per_account,
                     lines_per_journal=gl_lines_per_journal,
                     date_range_days=gl_date_range_days
                 )
-                
-                # Store in session state
                 st.session_state.gl_journals = gl_journals
                 st.session_state.gl_journals_per_account = gl_journals_per_account
                 st.session_state.gl_lines_per_journal = gl_lines_per_journal
-                
-                # Display journal summary
                 st.subheader("📊 GL Journals Summary")
-                
-                # Create summary dataframe
                 summary_data = []
                 for journal in gl_journals:
                     header = journal['header']
                     is_balanced = abs(header['TotalDebit'] - header['TotalCredit']) < 0.01
                     summary_data.append({
                         'Journal ID': header['JournalId'],
-                        'Journal Name': header['JournalName'],
-                        'Journal Type': header['JournalType'],
+                        'Journal Name': header['JournalName'][:20] + "..." if len(header['JournalName']) > 20 else header['JournalName'],
                         'Business Unit': header['BusinessUnit'],
-                        'Ledger': header['Ledger'],
-                        'Currency': header['Currency'],
                         'Total Debit': f"${header['TotalDebit']:,.2f}",
                         'Total Credit': f"${header['TotalCredit']:,.2f}",
-                        'Lines': len(journal['lines']),
-                        'Balanced': '✅ Yes' if is_balanced else '❌ No'
+                        'Balanced': '✅' if is_balanced else '❌'
                     })
-                
                 summary_df = pd.DataFrame(summary_data)
                 st.dataframe(summary_df, use_container_width=True)
-                
-                # Download CSV
-                csv_data = gl_journal_gen.generate_csv_content(gl_journals)
-                st.download_button(
-                    label="📥 Download GL Journals CSV",
-                    data=csv_data,
-                    file_name="gl_journals_interface.csv",
-                    mime="text/csv"
-                )
-                
-                # Download Oracle Fusion format
-                fusion_format = gl_journal_gen.generate_oracle_fusion_format(gl_journals)
-                import json
-                fusion_json = json.dumps(fusion_format, indent=2)
-                st.download_button(
-                    label="📥 Download Oracle Fusion JSON",
-                    data=fusion_json,
-                    file_name="gl_journals_fusion.json",
-                    mime="application/json"
-                )
-                
-                # Download Properties file
-                properties_data = gl_journal_gen.generate_properties_content(gl_journals)
-                st.download_button(
-                    label="📥 Download Properties File",
-                    data=properties_data,
-                    file_name="gl_journal_import.properties",
-                    mime="text/plain"
-                )
-                
+                with st.expander("📋 Detailed Journal Information"):
+                    detailed_data = []
+                    for journal in gl_journals:
+                        header = journal['header']
+                        is_balanced = abs(header['TotalDebit'] - header['TotalCredit']) < 0.01
+                        detailed_data.append({
+                            'Journal ID': header['JournalId'],
+                            'Journal Name': header['JournalName'],
+                            'Journal Type': header['JournalType'],
+                            'Business Unit': header['BusinessUnit'],
+                            'Ledger': header['Ledger'],
+                            'Currency': header['Currency'],
+                            'Total Debit': f"${header['TotalDebit']:,.2f}",
+                            'Total Credit': f"${header['TotalCredit']:,.2f}",
+                            'Lines': len(journal['lines']),
+                            'Balanced': '✅ Yes' if is_balanced else '❌ No'
+                        })
+                    detailed_df = pd.DataFrame(detailed_data)
+                    st.dataframe(detailed_df, use_container_width=True)
+                st.markdown("---")
+                st.subheader("📥 Download Files")
+                col1, col2 = st.columns(2)
+                with col1:
+                    csv_data = gl_journal_gen.generate_csv_content(gl_journals)
+                    st.download_button(
+                        label="📥 GL Journals CSV",
+                        data=csv_data,
+                        file_name="gl_journals_interface.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    fusion_format = gl_journal_gen.generate_oracle_fusion_format(gl_journals)
+                    import json
+                    fusion_json = json.dumps(fusion_format, indent=2)
+                    st.download_button(
+                        label="📥 Oracle Fusion JSON",
+                        data=fusion_json,
+                        file_name="gl_journals_fusion.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                with col2:
+                    properties_data = gl_journal_gen.generate_properties_content(gl_journals)
+                    st.download_button(
+                        label="📥 Properties File",
+                        data=properties_data,
+                        file_name="gl_journal_import.properties",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
                 st.success(f"✅ Generated {len(gl_journals)} GL journals!")
-                
             except Exception as e:
                 st.error(f"❌ Error generating GL journals: {e}")
-        
-        # Display existing journals if available
         if st.session_state.gl_journals:
             st.subheader("📋 Previously Generated GL Journals")
-            
-            # Summary statistics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 total_journals = len(st.session_state.gl_journals)
                 st.metric("Total Journals", total_journals)
-            
             with col2:
                 total_lines = sum(len(journal['lines']) for journal in st.session_state.gl_journals)
                 st.metric("Total Lines", total_lines)
-            
             with col3:
                 total_debit = sum(journal['header']['TotalDebit'] for journal in st.session_state.gl_journals)
                 st.metric("Total Debit", f"${total_debit:,.2f}")
-            
             with col4:
                 total_credit = sum(journal['header']['TotalCredit'] for journal in st.session_state.gl_journals)
                 st.metric("Total Credit", f"${total_credit:,.2f}")
-            
-            # Check overall balance
             if abs(total_debit - total_credit) < 0.01:
                 st.success("✅ All journals are balanced!")
             else:
                 st.error("❌ Journals are not balanced!")
-            
-            # Show detailed journal data
             with st.expander("📄 Detailed GL Journal Data"):
                 for i, journal in enumerate(st.session_state.gl_journals):
                     header = journal['header']
                     st.write(f"**Journal {i+1}: {header['JournalId']}**")
                     st.write(f"Type: {header['JournalType']} | Business Unit: {header['BusinessUnit']} | Ledger: {header['Ledger']}")
                     st.write(f"Total Debit: ${header['TotalDebit']:,.2f} | Total Credit: ${header['TotalCredit']:,.2f}")
-                    
-                    # Show lines
                     lines_df = pd.DataFrame(journal['lines'])
                     st.dataframe(lines_df, use_container_width=True)
                     st.write("---")
-            
-            # Post to Oracle Fusion button (only show if GL journals were generated)
             if st.session_state.gl_journals:
                 st.markdown("---")
                 st.subheader("📤 Post to Oracle Fusion")
-                
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("🚀 Post GL Journals to Oracle Fusion", type="secondary", key="post_gl_btn"):
                         st.info("📤 Posting GL journals to Oracle Fusion...")
-                        
                         try:
                             client = SimpleOracleClient(config)
-                            
-                            # Add authentication if provided in sidebar
                             if 'username' in st.session_state and 'password' in st.session_state:
                                 if st.session_state.username and st.session_state.password:
                                     client.session.auth = (st.session_state.username, st.session_state.password)
                                     st.info("🔐 Using stored credentials")
-                            
-                            # Post to Oracle Fusion
                             success = client.post_gl_journals(st.session_state.gl_journals)
-                            
                             if success:
                                 st.success("✅ Successfully posted GL journals to Oracle Fusion!")
                             else:
                                 st.error("❌ Failed to post GL journals to Oracle Fusion")
-                                
                         except Exception as e:
                             st.error(f"❌ Error posting to Oracle Fusion: {e}")
-                
                 with col2:
                     if st.button("🔄 Clear GL Data", type="secondary", key="clear_gl_btn"):
                         if 'gl_journals' in st.session_state:

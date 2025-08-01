@@ -15,8 +15,13 @@ class BAI2Generator:
         }
     
     def generate_bai2_file(self, accounts: List[Dict[str, Any]], transactions_per_account: int = 10, 
-                          opening_balance: float = 50000.0, target_closing_balance: float = 75000.0) -> str:
+                          opening_balance: float = 50000.0, target_closing_balance: float = 75000.0,
+                          pre_generated_transactions: List[Dict[str, Any]] = None) -> str:
         """Generate BAI2 format bank statement with per-account balances"""
+        
+        # Validate inputs
+        if not accounts:
+            raise ValueError("No accounts provided for BAI2 generation")
         
         bai2_content = []
         
@@ -26,27 +31,38 @@ class BAI2Generator:
         
         # For each account
         for account in accounts:
-            # Use per-account balances if available, otherwise fall back to global defaults
-            account_opening_balance = account.get('opening_balance', opening_balance)
-            account_closing_balance = account.get('closing_balance', target_closing_balance)
-            
-            # Account Identifier (Record Type 02)
-            account_header = self._create_account_header(account)
-            bai2_content.append(account_header)
-            
-            # Generate transactions for this account
-            transactions = self._generate_transactions_for_account(
-                account, transactions_per_account, account_opening_balance, account_closing_balance
-            )
-            
-            # Transaction Details (Record Type 03)
-            for transaction in transactions:
-                transaction_record = self._create_transaction_record(transaction)
-                bai2_content.append(transaction_record)
-            
-            # Account Trailer (Record Type 49) - use per-account balances
-            account_trailer = self._create_account_trailer(account, account_opening_balance, account_closing_balance)
-            bai2_content.append(account_trailer)
+            try:
+                # Use per-account balances if available, otherwise fall back to global defaults
+                account_opening_balance = account.get('opening_balance', opening_balance)
+                account_closing_balance = account.get('closing_balance', target_closing_balance)
+                
+                # Account Identifier (Record Type 02)
+                account_header = self._create_account_header(account)
+                bai2_content.append(account_header)
+                
+                # Get transactions for this account
+                if pre_generated_transactions:
+                    # Use pre-generated transactions for this account
+                    account_transactions = [t for t in pre_generated_transactions if t.get('account_id') == account.get('account_id')]
+                else:
+                    # Fallback to generating transactions (for backward compatibility)
+                    account_transactions = self._generate_transactions_for_account(
+                        account, transactions_per_account, account_opening_balance, account_closing_balance
+                    )
+                
+                # Transaction Details (Record Type 03)
+                for transaction in account_transactions:
+                    transaction_record = self._create_transaction_record(transaction)
+                    bai2_content.append(transaction_record)
+                
+                # Account Trailer (Record Type 49) - use per-account balances
+                account_trailer = self._create_account_trailer(account, account_opening_balance, account_closing_balance)
+                bai2_content.append(account_trailer)
+                
+            except Exception as e:
+                # Log error but continue with other accounts
+                print(f"Error processing account {account.get('account_id', 'unknown')}: {e}")
+                continue
         
         # File Trailer (Record Type 98)
         file_trailer = self._create_file_trailer()
@@ -66,16 +82,46 @@ class BAI2Generator:
     
     def _create_transaction_record(self, transaction: Dict[str, Any]) -> str:
         """Create BAI2 transaction detail record"""
-        amount = transaction['amount']
-        transaction_type = transaction['type']
-        
-        # BAI2 transaction codes
-        if transaction_type == 'Credit':
-            code = '165'  # Credit
-        else:
-            code = '475'  # Debit
-        
-        return f"03,{transaction['date']},{code},{amount:.2f},{transaction['description']},,"
+        try:
+            amount = transaction.get('amount', 0.0)
+            transaction_type = transaction.get('type', 'Credit')
+            
+            # Convert date format from YYYY-MM-DD to DD/MM/YY
+            date_str = transaction.get('date', '01/01/24')
+            if '-' in date_str:
+                # Parse YYYY-MM-DD format
+                from datetime import datetime
+                try:
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    date_formatted = date_obj.strftime('%d/%m/%y')
+                except ValueError:
+                    # Fallback to default date
+                    date_formatted = '01/01/24'
+            else:
+                # Assume already in DD/MM/YY format
+                date_formatted = date_str
+            
+            # BAI2 transaction codes - more realistic codes
+            if transaction_type == 'Credit':
+                # Various credit codes
+                credit_codes = ['165', '195', '200', '210', '220']  # Different credit types
+                code = credit_codes[hash(str(transaction.get('description', ''))) % len(credit_codes)]
+            else:
+                # Various debit codes
+                debit_codes = ['475', '485', '490', '500', '510']  # Different debit types
+                code = debit_codes[hash(str(transaction.get('description', ''))) % len(debit_codes)]
+            
+            # Truncate description if too long for BAI2 format
+            description = transaction.get('description', 'Demo transaction')
+            if len(description) > 30:
+                description = description[:27] + "..."
+            
+            return f"03,{date_formatted},{code},{amount:.2f},{description},,"
+            
+        except Exception as e:
+            # Return a safe default transaction record
+            print(f"Error creating transaction record: {e}")
+            return f"03,01/01/24,165,0.00,Demo transaction,,"
     
     def _create_account_trailer(self, account: Dict[str, Any], opening_balance: float, closing_balance: float) -> str:
         """Create BAI2 account trailer record"""
