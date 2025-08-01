@@ -1,7 +1,7 @@
 # Oracle Fusion Demo Transaction Generator Configuration
 
 oracle_fusion:
-  base_url: "https://iabhzv-test.fa.ocs.oraclecloud.com"  # Can be overridden in app
+  base_url: "https://your-instance.fa.ocs.oraclecloud.com"  # Can be overridden in app
   api_version: "11.13.18.05"
   timeout: 30
 
@@ -47,4 +47,12 @@ bai2_format:
 output:
   bai2_file: "generated_bank_statement.bai2"
   excel_file: "demo_transactions.xlsx"
-  json_file: "transaction_data.json" 
+  json_file: "transaction_data.json"
+
+# BIP Publisher Configuration (for balance extraction)
+bip_publisher:
+  endpoint: "https://your-instance.fa.ocs.oraclecloud.com"
+  username: ""  # Set via environment variable BIP_USERNAME
+  password: ""  # Set via environment variable BIP_PASSWORD
+  report_path: "/Custom/Reports/Balance_Query_Report"  # Set via environment variable BIP_REPORT_PATH
+  timeout: 30 

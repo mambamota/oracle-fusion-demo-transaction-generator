@@ -233,6 +233,51 @@ The application integrates with Oracle Fusion REST APIs:
 - **AR Invoices**: Create Accounts Receivable invoices
 - **GL Journals**: Create General Ledger journal entries
 
+## 📤 Posting Features
+
+### Direct Posting to Oracle Fusion
+
+The application now supports **direct posting** of generated data back to your Oracle Fusion instance:
+
+#### Prerequisites for Posting
+- Valid Oracle Fusion instance URL
+- Username and password with posting permissions
+- Generated data in any of the tabs
+
+#### Posting Process
+1. **Generate Data**: Use any tab to generate demo data
+2. **Review Data**: Check the generated data in the interface
+3. **Post to Fusion**: Click the "Post to Oracle Fusion" button
+4. **Monitor Status**: Watch for success/error messages
+5. **Verify in Fusion**: Check your Oracle Fusion instance for posted data
+
+#### Supported Posting Operations
+- **🏦 BAI2 Bank Statements**: Post bank statement data
+- **💳 External Cash**: Post cash management transactions
+- **📄 AP Invoices**: Post accounts payable invoices
+- **📋 AR Invoices**: Post accounts receivable invoices
+- **📊 GL Journals**: Post general ledger journal entries
+
+#### Endpoint Discovery
+The app includes an **"Discover Available Endpoints"** button in the sidebar that:
+- Tests common Oracle Fusion REST API endpoints
+- Identifies which endpoints are available in your instance
+- Shows authentication requirements for each endpoint
+- Helps determine which posting features are available
+
+#### Error Handling
+- **Authentication Errors**: Check username/password
+- **Permission Errors**: Verify posting permissions
+- **Data Format Errors**: Review generated data structure
+- **Network Errors**: Check Oracle Fusion connectivity
+- **404 Errors**: Endpoint not available in your instance
+
+#### Data Flow
+1. **📥 Fetch Real Data**: Get real bank accounts from Oracle Fusion
+2. **🎭 Generate Fake Data**: Create realistic transaction data
+3. **🔗 Combine Data**: Merge real accounts with fake transactions
+4. **📤 Post Back**: Send combined data to Oracle Fusion for testing
+
 ## 📁 Output Files
 
 Generated files include:

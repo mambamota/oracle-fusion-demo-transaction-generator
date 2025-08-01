@@ -16,7 +16,7 @@ class BAI2Generator:
     
     def generate_bai2_file(self, accounts: List[Dict[str, Any]], transactions_per_account: int = 10, 
                           opening_balance: float = 50000.0, target_closing_balance: float = 75000.0) -> str:
-        """Generate BAI2 format bank statement"""
+        """Generate BAI2 format bank statement with per-account balances"""
         
         bai2_content = []
         
@@ -26,13 +26,17 @@ class BAI2Generator:
         
         # For each account
         for account in accounts:
+            # Use per-account balances if available, otherwise fall back to global defaults
+            account_opening_balance = account.get('opening_balance', opening_balance)
+            account_closing_balance = account.get('closing_balance', target_closing_balance)
+            
             # Account Identifier (Record Type 02)
             account_header = self._create_account_header(account)
             bai2_content.append(account_header)
             
             # Generate transactions for this account
             transactions = self._generate_transactions_for_account(
-                account, transactions_per_account, opening_balance, target_closing_balance
+                account, transactions_per_account, account_opening_balance, account_closing_balance
             )
             
             # Transaction Details (Record Type 03)
@@ -40,8 +44,8 @@ class BAI2Generator:
                 transaction_record = self._create_transaction_record(transaction)
                 bai2_content.append(transaction_record)
             
-            # Account Trailer (Record Type 49)
-            account_trailer = self._create_account_trailer(account, opening_balance, target_closing_balance)
+            # Account Trailer (Record Type 49) - use per-account balances
+            account_trailer = self._create_account_trailer(account, account_opening_balance, account_closing_balance)
             bai2_content.append(account_trailer)
         
         # File Trailer (Record Type 98)
