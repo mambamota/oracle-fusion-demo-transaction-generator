@@ -13,17 +13,35 @@ from io import BytesIO
 import re
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
 # Load environment variables
 load_dotenv('bip_config.env')
 
 class BIPBalanceClient:
     def __init__(self):
-        self.base_url = os.getenv('BIP_BASE_URL', 'https://your-instance.fa.ocs.oraclecloud.com')
-        self.endpoint = os.getenv('BIP_ENDPOINT', f"{self.base_url}:443/xmlpserver/services/v2/ReportService")
-        self.report_path = os.getenv('BIP_REPORT_PATH', '/~your-username/_temp/wsq/csv.xdo')
-        self.username = os.getenv('BIP_USERNAME', 'your-username@your-domain.com')
-        self.password = os.getenv('BIP_PASSWORD', 'your-password')
+        # Try to load from Streamlit secrets first (for deployment)
+        try:
+            if 'bip_publisher' in st.secrets:
+                self.base_url = st.secrets.bip_publisher.base_url
+                self.endpoint = st.secrets.bip_publisher.endpoint
+                self.report_path = st.secrets.bip_publisher.report_path
+                self.username = st.secrets.bip_publisher.username
+                self.password = st.secrets.bip_publisher.password
+            else:
+                # Fallback to environment variables
+                self.base_url = os.getenv('BIP_BASE_URL', 'https://your-instance.fa.ocs.oraclecloud.com')
+                self.endpoint = os.getenv('BIP_ENDPOINT', f"{self.base_url}:443/xmlpserver/services/v2/ReportService")
+                self.report_path = os.getenv('BIP_REPORT_PATH', '/~your-username/_temp/wsq/csv.xdo')
+                self.username = os.getenv('BIP_USERNAME', 'your-username@your-domain.com')
+                self.password = os.getenv('BIP_PASSWORD', 'your-password')
+        except Exception as e:
+            # Fallback to environment variables if secrets not available
+            self.base_url = os.getenv('BIP_BASE_URL', 'https://your-instance.fa.ocs.oraclecloud.com')
+            self.endpoint = os.getenv('BIP_ENDPOINT', f"{self.base_url}:443/xmlpserver/services/v2/ReportService")
+            self.report_path = os.getenv('BIP_REPORT_PATH', '/~your-username/_temp/wsq/csv.xdo')
+            self.username = os.getenv('BIP_USERNAME', 'your-username@your-domain.com')
+            self.password = os.getenv('BIP_PASSWORD', 'your-password')
         
     def minify_sql(self, sql_query):
         """Minify SQL query by removing comments and extra whitespace"""

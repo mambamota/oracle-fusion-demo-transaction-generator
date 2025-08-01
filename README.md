@@ -1,25 +1,28 @@
 # Oracle Fusion Demo Transaction Generator
 
-A comprehensive Streamlit web application for generating demo transactions for Oracle Fusion Financials testing and development. This tool combines real Oracle Fusion bank account data with realistic fake transactions to create comprehensive test datasets.
+A comprehensive Streamlit web application for generating demo transactions for Oracle Fusion Financials testing and development. This tool fetches **real opening balances** from Oracle Fusion and generates realistic fake transactions to create comprehensive test datasets.
 
 ## 🚀 Features
 
 ### Core Components
+- **💰 Real Opening Balances**: Fetch real opening balances per bank account per day from Oracle Fusion using BIP Publisher
 - **🏦 Real Bank Accounts**: Fetch and display real bank accounts from Oracle Fusion instance
-- **📊 BAI2 Bank Statements**: Generate BAI2 format bank statements with opening/closing balances
+- **📊 BAI2 Bank Statements**: Generate BAI2 format bank statements with real opening balances
 - **💳 External Cash Transactions**: Generate cash management transactions for auto-reconciliation
 - **📄 AP Invoices**: Create Accounts Payable invoices with line items and supplier data
 - **📋 AR Invoices/Receipts**: Generate Accounts Receivable invoices and associated receipts
 - **📊 GL Journals**: Create balanced General Ledger journal entries
 
 ### Key Features
-- **🌐 Streamlit Web Interface**: User-friendly web application with tabbed interface
+- **🌐 Streamlit Web Interface**: User-friendly web application with simplified tabbed interface
 - **🔗 Oracle Fusion API Integration**: Direct connection to Oracle Fusion instances
+- **📊 BIP Publisher Integration**: Fetch real opening balances via Oracle Business Intelligence Publisher
 - **📊 Multiple Export Formats**: CSV, JSON, and Properties files for Oracle Fusion import
 - **⚙️ Configurable Parameters**: Customize transaction counts, amounts, and date ranges
 - **🎭 Realistic Data**: Uses Faker library for realistic demo data
 - **🔐 Secure Authentication**: Username/password authentication for Oracle Fusion
 - **📱 Responsive Design**: Works on desktop and mobile devices
+- **🚀 Streamlit Share Ready**: Deployable on Streamlit Cloud with secrets management
 
 ## 📁 Project Structure
 
@@ -27,20 +30,18 @@ A comprehensive Streamlit web application for generating demo transactions for O
 data tests generation/
 ├── .github/                      # GitHub templates and workflows
 ├── .streamlit/                   # Streamlit configuration
+│   └── config.toml              # Streamlit deployment config
 ├── config/
 │   └── config.yaml              # Configuration file
-├── demo_venv/                   # Virtual environment (ignored by Git)
+├── search_files/                 # Development and discovery files
 ├── main_fixed.py                # Main Streamlit application
 ├── bai2_generator.py            # BAI2 bank statement generator
-├── external_cash_generator.py   # External cash transactions generator
-├── ap_invoice_generator.py      # AP invoice generator
-├── ar_invoice_generator.py      # AR invoice generator
-├── gl_journal_generator.py      # GL journal generator
-├── validate_step2.py            # Step 2 validation script
-├── validate_step4.py            # Step 4 validation script
-├── validate_step5.py            # Step 5 validation script
+├── bip_balance_client.py        # BIP Publisher client
+├── test_bip_working_path.py     # BIP Publisher test script
+├── test_working_opening_balances.py # REST API test script
+├── final_opening_balance_query.sql # SQL query for opening balances
 ├── requirements.txt             # Python dependencies
-├── run.bat                     # Windows batch file to run the app
+├── bip_config.env              # BIP Publisher credentials (local only)
 ├── .gitignore                  # Git ignore rules
 ├── LICENSE                     # License file
 └── README.md                   # This file
@@ -52,24 +53,25 @@ data tests generation/
 - Python 3.8 or higher
 - Oracle Fusion instance access
 - API credentials (username/password)
+- BIP Publisher access (for real balance fetching)
 
 ### Setup Instructions
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/mambamota/oracle-fusion-demo-transaction-generator.git
+   git clone https://github.com/mbola-raoelina/oracle-fusion-demo-transaction-generator.git
    cd oracle-fusion-demo-transaction-generator
    ```
 
 2. **Create a virtual environment (recommended)**
    ```bash
-   python -m venv venv
+   python -m venv demo_venv
    
    # On Windows
-   venv\Scripts\activate
+   demo_venv\Scripts\activate
    
    # On macOS/Linux
-   source venv/bin/activate
+   source demo_venv/bin/activate
    ```
 
 3. **Install dependencies**
@@ -79,7 +81,7 @@ data tests generation/
 
 4. **Configure the application**
    - Edit `config/config.yaml` with your Oracle Fusion instance details
-   - Update the base URL and API version as needed
+   - Create `bip_config.env` with your BIP Publisher credentials (see Configuration section)
 
 ## 🚀 Usage
 
@@ -96,52 +98,47 @@ data tests generation/
 
 ### Using the Application
 
-#### 1. 🏦 Real Bank Accounts Tab
-- Enter your Oracle Fusion base URL
-- Provide username and password
-- Click "Fetch Bank Accounts" to retrieve real account data
-- View account details and download raw JSON data
-- Use this data as the foundation for generating transactions
+#### 1. 💰 Real Balances Tab
+- **Test Oracle Connection**: Verify connectivity to your Oracle Fusion instance
+- **Test BIP Publisher**: Verify BIP Publisher access for real balance fetching
+- **Fetch Real Bank Accounts**: Get real bank accounts with opening balances
+- **Set Target Closing Balances**: Configure target balances for each account
+- **Generate Demo Transactions**: Create transactions that balance from real opening to target closing
 
-#### 2. 📊 BAI2 Bank Statements Tab
-- Configure opening and closing balances
-- Set the number of transactions to generate
-- Generate BAI2 format bank statements
-- Download the generated BAI2 file
-- Export to Excel for review
-
-#### 3. 💳 External Cash Transactions Tab
-- Set the number of transactions per account
-- Configure transaction amounts and date ranges
-- Generate external cash management transactions
-- Download CSV and JSON formats
-- Export to Excel for review
-
-#### 4. 📄 AP Invoices Tab
-- Set the number of invoices to generate
-- Configure line items per invoice
-- Generate Accounts Payable invoices with suppliers
-- Download CSV, JSON, and Properties files
-- Export to Excel for review
-
-#### 5. 📋 AR Invoices/Receipts Tab
-- Set the number of invoices and receipts
-- Configure line items and customer data
-- Generate Accounts Receivable invoices and receipts
-- Download CSV, JSON, and Properties files
-- Export to Excel for review
-
-#### 6. 📊 GL Journals Tab
-- Set the number of journal entries per account
-- Configure lines per journal (minimum 2 for balance)
-- Generate balanced General Ledger journal entries
-- Download CSV, JSON, and Properties files
-- Export to Excel for review
+#### 2. 💳 Transactions Tab
+- **External Cash Transactions**: Generate cash management transactions
+- **AP Invoices**: Create Accounts Payable invoices with suppliers
+- **AR Invoices/Receipts**: Generate Accounts Receivable invoices and receipts
+- **GL Journals**: Create balanced General Ledger journal entries
+- **Post to Oracle Fusion**: Send generated data directly to your Oracle Fusion instance
 
 ## ⚙️ Configuration
 
-### config/config.yaml
+### Local Development (bip_config.env)
+```env
+BIP_BASE_URL=https://your-instance.fa.ocs.oraclecloud.com
+BIP_ENDPOINT=https://your-instance.fa.ocs.oraclecloud.com:443/xmlpserver/services/v2/ReportService
+BIP_REPORT_PATH=/~your-username/_temp/wsq/csv.xdo
+BIP_USERNAME=your-username@your-domain.com
+BIP_PASSWORD=your-password
+```
 
+### Streamlit Share Deployment (Secrets)
+```toml
+[oracle_fusion]
+username = "your-oracle-username"
+password = "your-oracle-password"
+base_url = "https://your-instance.fa.ocs.oraclecloud.com"
+
+[bip_publisher]
+username = "your-bip-username"
+password = "your-bip-password"
+base_url = "https://your-instance.fa.ocs.oraclecloud.com"
+endpoint = "https://your-instance.fa.ocs.oraclecloud.com:443/xmlpserver/services/v2/ReportService"
+report_path = "/~your-username/_temp/wsq/csv.xdo"
+```
+
+### config/config.yaml
 ```yaml
 oracle_fusion:
   base_url: "https://your-instance.fa.ocs.oraclecloud.com"
@@ -149,107 +146,132 @@ oracle_fusion:
   timeout: 30
 
 transactions:
-  bai2_statement:
-    default_transactions: 50
-    min_amount: 100.00
-    max_amount: 10000.00
-    date_range_days: 30
-  
-  external_cash:
-    default_transactions_per_account: 10
-    min_amount: 500.00
-    max_amount: 5000.00
-  
-  ap_invoices:
-    default_invoices: 20
-    default_lines_per_invoice: 3
-    min_amount: 500.00
-    max_amount: 5000.00
-  
-  ar_invoices:
-    default_invoices: 15
-    default_lines_per_invoice: 2
-    min_amount: 1000.00
-    max_amount: 15000.00
-  
-  gl_journals:
-    default_journals_per_account: 2
-    default_lines_per_journal: 3
-    min_amount: 100.00
-    max_amount: 5000.00
+  default_per_account: 10
+  default_opening_balance: 50000.0
+  default_closing_balance: 75000.0
 ```
+
+## 🔧 Technical Architecture
+
+### Real Balance Fetching
+The application uses **Oracle BIP Publisher** to fetch real opening balances:
+
+1. **SQL Query**: Queries `CE_STMT_BALANCES` table for opening balances (`OPBD`)
+2. **BIP Publisher**: Sends SQL via SOAP request to BIP Publisher service
+3. **Data Processing**: Parses CSV response and matches to bank accounts
+4. **Fallback**: Uses REST API if BIP Publisher is unavailable
+
+### Balance Matching Logic
+- **REST API**: Fetches bank accounts via `cashBankAccounts` endpoint
+- **BIP Data**: Fetches opening balances via BIP Publisher
+- **Matching**: Links accounts using `bank_account_id` with multiple strategies
+- **Fallback**: Uses default balance if no match found
+
+### Transaction Generation
+- **Real Opening Balances**: Uses actual balances from Oracle Fusion
+- **Target Closing Balances**: User-defined targets for each account
+- **Mathematical Balance**: Generates transactions that balance from opening to target
+- **Realistic Data**: Uses Faker library for realistic transaction details
 
 ## 📊 Generated Data Types
 
+### 💰 Real Opening Balances
+- **Source**: Oracle Fusion `CE_STMT_BALANCES` table
+- **Method**: BIP Publisher SQL query
+- **Format**: Latest opening balance per bank account per day
+- **Features**: Supports negative balances, multiple currencies
+
 ### 🏦 Real Bank Accounts
-- Fetched from Oracle Fusion instance
-- Account names, numbers, and currencies
-- Business unit and ledger information
-- Real account data for authentic testing
+- **Source**: Oracle Fusion REST API
+- **Endpoint**: `cashBankAccounts`
+- **Data**: Account names, numbers, currencies, business units
+- **Integration**: Matched with BIP opening balances
 
 ### 📊 BAI2 Bank Statements
-- Multiple bank accounts with real data
-- Opening and closing balances
-- Random transactions (credits/debits)
-- Proper BAI2 record formatting
-- Transaction references and descriptions
+- **Real Opening Balances**: Uses actual balances from Fusion
+- **Target Closing Balances**: User-configurable targets
+- **Transaction Generation**: Creates balanced transactions
+- **Format**: Standard BAI2 format for bank statement import
 
 ### 💳 External Cash Transactions
-- Cash management transactions
-- Transaction types (receipt/payment/transfer)
-- Bank account references
-- Auto-reconciliation ready
-- CSV and JSON export formats
+- **Cash Management**: Transactions for auto-reconciliation
+- **Transaction Types**: Receipt, payment, transfer
+- **Bank Account References**: Links to real bank accounts
+- **Export Formats**: CSV, JSON for Oracle Fusion import
 
 ### 📄 AP Invoices
-- Supplier information and addresses
-- Invoice dates and due dates
-- Line items with quantities and prices
-- Payment terms and account assignments
-- Multiple export formats (CSV, JSON, Properties)
+- **Supplier Information**: Realistic supplier data
+- **Line Items**: Quantities, prices, descriptions
+- **Payment Terms**: Configurable payment terms
+- **Export Formats**: CSV, JSON, Properties files
 
 ### 📋 AR Invoices/Receipts
-- Customer information and addresses
-- Invoice details and line items
-- Service descriptions and amounts
-- Payment terms and account assignments
-- Associated receipt generation
+- **Customer Information**: Realistic customer data
+- **Invoice Details**: Line items, amounts, descriptions
+- **Receipt Generation**: Associated receipt creation
+- **Export Formats**: CSV, JSON, Properties files
 
 ### 📊 GL Journals
-- Balanced journal entries (debits = credits)
-- Multiple account types (Asset, Liability, Equity, Revenue, Expense)
-- Journal descriptions and line details
-- Business unit and ledger assignments
-- Multiple export formats
+- **Balanced Entries**: Debits equal credits
+- **Account Types**: Asset, Liability, Equity, Revenue, Expense
+- **Business Units**: Configurable business unit assignments
+- **Export Formats**: CSV, JSON, Properties files
+
+## 🚀 Deployment
+
+### Local Development
+```bash
+streamlit run main_fixed.py
+```
+
+### Streamlit Share Deployment
+
+1. **Upload Files to Streamlit Share:**
+   ```
+   main_fixed.py
+   config/config.yaml
+   bai2_generator.py
+   requirements.txt
+   .streamlit/config.toml
+   final_opening_balance_query.sql
+   test_bip_working_path.py
+   test_working_opening_balances.py
+   bip_balance_client.py
+   README.md
+   ```
+
+2. **Configure Secrets in Streamlit Share:**
+   - Go to your app → Settings → Secrets
+   - Add the secrets configuration shown above
+   - Replace with your actual Oracle Fusion credentials
+
+3. **Deploy:**
+   - Click "Deploy"
+   - Your app will be available at: `https://your-app-name.streamlit.app`
 
 ## 🔧 API Integration
 
-The application integrates with Oracle Fusion REST APIs:
+The application integrates with Oracle Fusion using multiple methods:
 
+### REST APIs
 - **Bank Account Fetching**: `fscmRestApi/resources/11.13.18.05/cashBankAccounts`
-- **BAI2 Bank Statement Processing**: Upload and process via ESS jobs
-- **External Cash Transactions**: Create cash management transactions
-- **AP Invoices**: Create Accounts Payable invoices
-- **AR Invoices**: Create Accounts Receivable invoices
-- **GL Journals**: Create General Ledger journal entries
+- **Posting Operations**: Direct posting to Oracle Fusion endpoints
+
+### BIP Publisher
+- **Opening Balances**: SQL queries via BIP Publisher service
+- **Endpoint**: `xmlpserver/services/v2/ReportService`
+- **Method**: SOAP requests with GZIP/Base64 encoded SQL
+
+### Database Tables
+- **`CE_STMT_BALANCES`**: Opening balances with `OPBD` code
+- **`GL_BALANCES`**: General ledger balances
+- **`all_tables`**: Schema discovery
 
 ## 📤 Posting Features
 
 ### Direct Posting to Oracle Fusion
 
-The application now supports **direct posting** of generated data back to your Oracle Fusion instance:
-
-#### Prerequisites for Posting
-- Valid Oracle Fusion instance URL
-- Username and password with posting permissions
-- Generated data in any of the tabs
-
-#### Posting Process
-1. **Generate Data**: Use any tab to generate demo data
-2. **Review Data**: Check the generated data in the interface
-3. **Post to Fusion**: Click the "Post to Oracle Fusion" button
-4. **Monitor Status**: Watch for success/error messages
-5. **Verify in Fusion**: Check your Oracle Fusion instance for posted data
+The application supports **direct posting** of generated data back to your Oracle Fusion instance:
 
 #### Supported Posting Operations
 - **🏦 BAI2 Bank Statements**: Post bank statement data
@@ -258,67 +280,39 @@ The application now supports **direct posting** of generated data back to your O
 - **📋 AR Invoices**: Post accounts receivable invoices
 - **📊 GL Journals**: Post general ledger journal entries
 
-#### Endpoint Discovery
-The app includes an **"Discover Available Endpoints"** button in the sidebar that:
-- Tests common Oracle Fusion REST API endpoints
-- Identifies which endpoints are available in your instance
-- Shows authentication requirements for each endpoint
-- Helps determine which posting features are available
-
-#### Error Handling
-- **Authentication Errors**: Check username/password
-- **Permission Errors**: Verify posting permissions
-- **Data Format Errors**: Review generated data structure
-- **Network Errors**: Check Oracle Fusion connectivity
-- **404 Errors**: Endpoint not available in your instance
-
-#### Data Flow
-1. **📥 Fetch Real Data**: Get real bank accounts from Oracle Fusion
-2. **🎭 Generate Fake Data**: Create realistic transaction data
-3. **🔗 Combine Data**: Merge real accounts with fake transactions
-4. **📤 Post Back**: Send combined data to Oracle Fusion for testing
-
-## 📁 Output Files
-
-Generated files include:
-- `bank_statement.bai2`: BAI2 format bank statement
-- `external_cash_transactions.csv`: External cash transactions
-- `ap_invoices_interface.csv`: AP invoice data
-- `ap_invoice_import.properties`: AP import configuration
-- `ar_invoices_interface.csv`: AR invoice data
-- `ar_invoice_import.properties`: AR import configuration
-- `gl_journals_interface.csv`: GL journal data
-- `gl_journal_import.properties`: GL import configuration
-- Various Excel files for review and analysis
+#### Posting Process
+1. **Generate Data**: Use any tab to generate demo data
+2. **Review Data**: Check the generated data in the interface
+3. **Post to Fusion**: Click the "Post to Oracle Fusion" button
+4. **Monitor Status**: Watch for success/error messages
+5. **Verify in Fusion**: Check your Oracle Fusion instance for posted data
 
 ## 🛡️ Security Notes
 
-- **Credentials**: Enter username/password in the web interface (not stored permanently)
+- **Credentials**: Stored in Streamlit secrets for deployment, environment variables for local development
 - **Base URL**: Configurable Oracle Fusion instance URL
 - **Data Privacy**: Sample data files are kept locally and not pushed to GitHub
 - **Testing**: Always test in development environment first
 - **Review**: Review generated data before production use
 
-## 🧪 Validation Scripts
+## 🧪 Testing
 
-The project includes validation scripts for each component:
-- `validate_step2.py`: External Cash Transactions validation
-- `validate_step4.py`: AR Invoices validation
-- `validate_step5.py`: GL Journals validation
+### Test Scripts
+- `test_bip_working_path.py`: Test BIP Publisher connection
+- `test_working_opening_balances.py`: Test REST API balance fetching
 
-Run these scripts to verify data generation:
-```bash
-python validate_step2.py
-python validate_step4.py
-python validate_step5.py
-```
+### Validation
+- **Connection Testing**: Verify Oracle Fusion connectivity
+- **Balance Fetching**: Test real opening balance retrieval
+- **Transaction Generation**: Validate mathematical balance
+- **Data Export**: Verify export format correctness
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly using validation scripts
+4. Test thoroughly using test scripts
 5. Submit a pull request
 
 ## 📝 License
@@ -328,11 +322,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For issues or questions:
-1. Check the configuration file (`config/config.yaml`)
+1. Check the configuration files (`config/config.yaml`, `bip_config.env`)
 2. Verify Oracle Fusion connection and credentials
-3. Review error logs in the Streamlit interface
-4. Test with smaller data sets first
-5. Run validation scripts to verify functionality
+3. Test BIP Publisher access
+4. Review error logs in the Streamlit interface
+5. Run test scripts to verify functionality
 
 ## 🔄 Version History
 
@@ -342,24 +336,29 @@ For issues or questions:
 - **V1.3**: Added AR invoice and receipt generation
 - **V2.0**: Added GL journal generation and comprehensive validation
 - **V2.1**: Enhanced UI, improved error handling, and added multiple export formats
+- **V3.0**: **Real opening balance fetching via BIP Publisher**
+- **V3.1**: **Streamlit Share deployment support with secrets management**
 
-## 🚀 Deployment
+## 🎯 Key Improvements in V3.0
 
-### Local Development
-```bash
-streamlit run main_fixed.py
-```
+### Real Data Integration
+- ✅ **Real Opening Balances**: Fetched from Oracle Fusion via BIP Publisher
+- ✅ **Real Bank Accounts**: Retrieved from Oracle Fusion REST APIs
+- ✅ **Mathematical Balance**: Transactions balance from real opening to target closing
+- ✅ **Negative Balance Support**: Handles negative opening balances properly
 
-### Streamlit Cloud Deployment
-1. Push to GitHub repository
-2. Connect to Streamlit Cloud
-3. Deploy automatically from GitHub
+### Enhanced User Experience
+- ✅ **Simplified Interface**: Clean, minimal UI with essential information only
+- ✅ **Real-time Balance Display**: Shows actual balances from Oracle Fusion
+- ✅ **Target Balance Configuration**: User-defined closing balance targets
+- ✅ **Transaction Verification**: Mathematical balance verification
 
-### Environment Variables
-- No environment variables required
-- All configuration through web interface
-- Credentials entered securely in the app
+### Deployment Ready
+- ✅ **Streamlit Share Compatible**: Secrets management for secure deployment
+- ✅ **Environment Variable Support**: Local development with .env files
+- ✅ **Security Hardened**: No hardcoded credentials in code
+- ✅ **Production Ready**: Comprehensive error handling and validation
 
 ---
 
-**Note**: This tool is designed for Oracle Fusion Financials testing and development. Always review generated data before using in production environments. 
+**Note**: This tool is designed for Oracle Fusion Financials testing and development. Always review generated data before using in production environments. The application now uses **real opening balances** from your Oracle Fusion instance for authentic testing scenarios. 

@@ -33,6 +33,7 @@ demo_venv/
 .env
 .env.local
 .env.production
+bip_config.env
 
 # Generated Files
 *.bai2

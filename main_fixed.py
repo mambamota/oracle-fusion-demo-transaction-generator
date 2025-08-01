@@ -120,6 +120,19 @@ try:
     if 'base_url' in st.session_state:
         config['oracle_fusion']['base_url'] = st.session_state.base_url
         
+    # Load credentials from Streamlit secrets (for deployment)
+    try:
+        if 'oracle_fusion' in st.secrets:
+            if not st.session_state.username and 'username' in st.secrets.oracle_fusion:
+                st.session_state.username = st.secrets.oracle_fusion.username
+            if not st.session_state.password and 'password' in st.secrets.oracle_fusion:
+                st.session_state.password = st.secrets.oracle_fusion.password
+            if 'base_url' in st.secrets.oracle_fusion:
+                config['oracle_fusion']['base_url'] = st.secrets.oracle_fusion.base_url
+                st.session_state.base_url = st.secrets.oracle_fusion.base_url
+    except Exception as e:
+        st.warning(f"Could not load secrets: {e}")
+        
 except Exception as e:
     st.error(f"Config error: {e}")
     config = {
