@@ -12,11 +12,17 @@ import pandas as pd
 from io import BytesIO
 import re
 import os
-from dotenv import load_dotenv
 import streamlit as st
 
-# Load environment variables
-load_dotenv('bip_config.env')
+# Load environment variables (optional - for local development)
+try:
+    from dotenv import load_dotenv
+    # Only load .env file if it exists (for local development)
+    if os.path.exists('bip_config.env'):
+        load_dotenv('bip_config.env')
+except ImportError:
+    # dotenv not available (e.g., on Streamlit Share)
+    pass
 
 class BIPBalanceClient:
     def __init__(self):
